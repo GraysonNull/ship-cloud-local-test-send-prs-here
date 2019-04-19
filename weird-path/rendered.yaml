@@ -4,7 +4,7 @@ metadata:
   labels:
     app: better-db
     release: better-db
-    this: is-not
+    this: is-not-its
   name: better-db
 spec:
   ports:
