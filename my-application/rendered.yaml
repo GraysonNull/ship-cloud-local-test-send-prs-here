@@ -19,7 +19,7 @@ spec:
   selector:
     app: better-db
     release: better-db
-  type: ClusterIP
+  type: LoadBalancer
 ---
 apiVersion: apps/v1beta2
 kind: Deployment
