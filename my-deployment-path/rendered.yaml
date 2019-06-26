@@ -12,6 +12,7 @@ kind: ServiceAccount
 metadata:
   labels:
     app: datadog
+    newTag: meta
     release: datadog
   name: datadog
 ---
@@ -325,7 +326,7 @@ spec:
           httpGet:
             path: /healthz
             port: 8080
-          initialDelaySeconds: 5
+          initialDelaySeconds: 6
           timeoutSeconds: 5
         resources: null
       securityContext:
