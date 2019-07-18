@@ -1592,7 +1592,7 @@ spec:
           value: ship-cluster-api
         - name: GITHUB_PRIVATE_KEY_FILE
           value: /keys/github/private-key.pem
-        image: registry.replicated.com/ship-enterprise/ship-cluster-api:0f28e74
+        image: registry.replicated.com/ship-enterprise/ship-cluster-api:b9c0c0d
         imagePullPolicy: IfNotPresent
         name: ship-cluster-api
         ports:
@@ -1634,7 +1634,7 @@ spec:
       containers:
       - args:
         - /scripts/start-ship-cluster-ui.sh
-        image: registry.replicated.com/ship-enterprise/ship-cluster-ui:0f28e74
+        image: registry.replicated.com/ship-enterprise/ship-cluster-ui:b9c0c0d
         imagePullPolicy: IfNotPresent
         name: ship-cluster-ui
         ports:
@@ -2603,7 +2603,7 @@ spec:
               name: ship-enterprise-postgres
         - name: ENSURE_LOCAL_CLUSTER
           value: ""
-        image: registry.replicated.com/ship-enterprise/ship-cluster-api:0f28e74
+        image: registry.replicated.com/ship-enterprise/ship-cluster-api:b9c0c0d
         imagePullPolicy: IfNotPresent
         name: ship-cluster-local-cluster
       imagePullSecrets:
