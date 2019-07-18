@@ -37,9 +37,7 @@ spec:
     openAPIV3Schema:
       properties:
         apiVersion:
-          description: 'APIVersion defines the versioned schema of this representation
-            of an object. Servers should convert recognized schemas to the latest
-            internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#resources'
+          description: 'APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#resources'
           type: string
         connection:
           properties:
@@ -87,9 +85,7 @@ spec:
               type: object
           type: object
         kind:
-          description: 'Kind is a string value representing the REST resource this
-            object represents. Servers may infer this from the endpoint the client
-            submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#types-kinds'
+          description: 'Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#types-kinds'
           type: string
         metadata:
           type: object
@@ -274,14 +270,10 @@ spec:
     openAPIV3Schema:
       properties:
         apiVersion:
-          description: 'APIVersion defines the versioned schema of this representation
-            of an object. Servers should convert recognized schemas to the latest
-            internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#resources'
+          description: 'APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#resources'
           type: string
         kind:
-          description: 'Kind is a string value representing the REST resource this
-            object represents. Servers may infer this from the endpoint the client
-            submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#types-kinds'
+          description: 'Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#types-kinds'
           type: string
         metadata:
           type: object
@@ -482,14 +474,10 @@ spec:
     openAPIV3Schema:
       properties:
         apiVersion:
-          description: 'APIVersion defines the versioned schema of this representation
-            of an object. Servers should convert recognized schemas to the latest
-            internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#resources'
+          description: 'APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#resources'
           type: string
         kind:
-          description: 'Kind is a string value representing the REST resource this
-            object represents. Servers may infer this from the endpoint the client
-            submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#types-kinds'
+          description: 'Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#types-kinds'
           type: string
         metadata:
           type: object
@@ -1164,34 +1152,7 @@ subjects:
 ---
 apiVersion: v1
 data:
-  initialize: "#!/bin/sh\nset -e ; # Have script exit in the event of a failed command.\n\n#
-    connectToMinio\n# Use a check-sleep-check loop to wait for Minio service to be
-    available\nconnectToMinio() {\n  SCHEME=$1\n  ATTEMPTS=0 ; LIMIT=29 ; # Allow
-    30 attempts\n  set -e ; # fail if we can't read the keys.\n  ACCESS=$(cat /config/accesskey)
-    ; SECRET=$(cat /config/secretkey) ;\n  set +e ; # The connections to minio are
-    allowed to fail.\n  echo \"Connecting to Minio server: $SCHEME://$MINIO_ENDPOINT:$MINIO_PORT\"
-    ;\n  MC_COMMAND=\"mc config host add myminio $SCHEME://$MINIO_ENDPOINT:$MINIO_PORT
-    $ACCESS $SECRET\" ;\n  $MC_COMMAND ;\n  STATUS=$? ;\n  until [ $STATUS = 0 ]\n
-    \ do\n    ATTEMPTS=`expr $ATTEMPTS + 1` ;\n    echo \\\"Failed attempts: $ATTEMPTS\\\"
-    ;\n    if [ $ATTEMPTS -gt $LIMIT ]; then\n      exit 1 ;\n    fi ;\n    sleep
-    2 ; # 1 second intervals between attempts\n    $MC_COMMAND ;\n    STATUS=$? ;\n
-    \ done ;\n  set -e ; # reset `e` as active\n  return 0\n}\n\n# checkBucketExists
-    ($bucket)\n# Check if the bucket exists, by using the exit code of `mc ls`\ncheckBucketExists()
-    {\n  BUCKET=$1\n  CMD=$(/usr/bin/mc ls myminio/$BUCKET > /dev/null 2>&1)\n  return
-    $?\n}\n\n# createBucket ($bucket, $policy, $purge)\n# Ensure bucket exists, purging
-    if asked to\ncreateBucket() {\n  BUCKET=$1\n  POLICY=$2\n  PURGE=$3\n\n  # Purge
-    the bucket, if set & exists\n  # Since PURGE is user input, check explicitly for
-    `true`\n  if [ $PURGE = true ]; then\n    if checkBucketExists $BUCKET ; then\n
-    \     echo \"Purging bucket '$BUCKET'.\"\n      set +e ; # don't exit if this
-    fails\n      /usr/bin/mc rm -r --force myminio/$BUCKET\n      set -e ; # reset
-    `e` as active\n    else\n      echo \"Bucket '$BUCKET' does not exist, skipping
-    purge.\"\n    fi\n  fi\n\n  # Create the bucket if it does not exist\n  if ! checkBucketExists
-    $BUCKET ; then\n    echo \"Creating bucket '$BUCKET'\"\n    /usr/bin/mc mb myminio/$BUCKET\n
-    \ else\n    echo \"Bucket '$BUCKET' already exists.\"\n  fi\n\n  # At this point,
-    the bucket should exist, skip checking for existence\n  # Set policy on the bucket\n
-    \ echo \"Setting policy of bucket '$BUCKET' to '$POLICY'.\"\n  /usr/bin/mc policy
-    $POLICY myminio/$BUCKET\n}\n\n# Try connecting to Minio instance\nscheme=http\nconnectToMinio
-    $scheme\n# Create the buckets\ncreateBucket ship-enterprise none "
+  initialize: "#!/bin/sh\nset -e ; # Have script exit in the event of a failed command.\n\n# connectToMinio\n# Use a check-sleep-check loop to wait for Minio service to be available\nconnectToMinio() {\n  SCHEME=$1\n  ATTEMPTS=0 ; LIMIT=29 ; # Allow 30 attempts\n  set -e ; # fail if we can't read the keys.\n  ACCESS=$(cat /config/accesskey) ; SECRET=$(cat /config/secretkey) ;\n  set +e ; # The connections to minio are allowed to fail.\n  echo \"Connecting to Minio server: $SCHEME://$MINIO_ENDPOINT:$MINIO_PORT\" ;\n  MC_COMMAND=\"mc config host add myminio $SCHEME://$MINIO_ENDPOINT:$MINIO_PORT $ACCESS $SECRET\" ;\n  $MC_COMMAND ;\n  STATUS=$? ;\n  until [ $STATUS = 0 ]\n  do\n    ATTEMPTS=`expr $ATTEMPTS + 1` ;\n    echo \\\"Failed attempts: $ATTEMPTS\\\" ;\n    if [ $ATTEMPTS -gt $LIMIT ]; then\n      exit 1 ;\n    fi ;\n    sleep 2 ; # 1 second intervals between attempts\n    $MC_COMMAND ;\n    STATUS=$? ;\n  done ;\n  set -e ; # reset `e` as active\n  return 0\n}\n\n# checkBucketExists ($bucket)\n# Check if the bucket exists, by using the exit code of `mc ls`\ncheckBucketExists() {\n  BUCKET=$1\n  CMD=$(/usr/bin/mc ls myminio/$BUCKET > /dev/null 2>&1)\n  return $?\n}\n\n# createBucket ($bucket, $policy, $purge)\n# Ensure bucket exists, purging if asked to\ncreateBucket() {\n  BUCKET=$1\n  POLICY=$2\n  PURGE=$3\n\n  # Purge the bucket, if set & exists\n  # Since PURGE is user input, check explicitly for `true`\n  if [ $PURGE = true ]; then\n    if checkBucketExists $BUCKET ; then\n      echo \"Purging bucket '$BUCKET'.\"\n      set +e ; # don't exit if this fails\n      /usr/bin/mc rm -r --force myminio/$BUCKET\n      set -e ; # reset `e` as active\n    else\n      echo \"Bucket '$BUCKET' does not exist, skipping purge.\"\n    fi\n  fi\n\n  # Create the bucket if it does not exist\n  if ! checkBucketExists $BUCKET ; then\n    echo \"Creating bucket '$BUCKET'\"\n    /usr/bin/mc mb myminio/$BUCKET\n  else\n    echo \"Bucket '$BUCKET' already exists.\"\n  fi\n\n  # At this point, the bucket should exist, skip checking for existence\n  # Set policy on the bucket\n  echo \"Setting policy of bucket '$BUCKET' to '$POLICY'.\"\n  /usr/bin/mc policy $POLICY myminio/$BUCKET\n}\n\n# Try connecting to Minio instance\nscheme=http\nconnectToMinio $scheme\n# Create the buckets\ncreateBucket ship-enterprise none "
 kind: ConfigMap
 metadata:
   labels:
@@ -1631,7 +1592,7 @@ spec:
           value: ship-cluster-api
         - name: GITHUB_PRIVATE_KEY_FILE
           value: /keys/github/private-key.pem
-        image: registry.replicated.com/ship-enterprise/ship-cluster-api:3ebe4d6
+        image: registry.replicated.com/ship-enterprise/ship-cluster-api:0f28e74
         imagePullPolicy: IfNotPresent
         name: ship-cluster-api
         ports:
@@ -1673,7 +1634,7 @@ spec:
       containers:
       - args:
         - /scripts/start-ship-cluster-ui.sh
-        image: registry.replicated.com/ship-enterprise/ship-cluster-ui:3ebe4d6
+        image: registry.replicated.com/ship-enterprise/ship-cluster-ui:0f28e74
         imagePullPolicy: IfNotPresent
         name: ship-cluster-ui
         ports:
@@ -1746,7 +1707,7 @@ spec:
           value: IfNotPresent
         - name: LOG_FORMAT
           value: json
-        image: registry.replicated.com/ship-enterprise/ship-cluster-worker:3ebe4d6
+        image: registry.replicated.com/ship-enterprise/ship-cluster-worker:0f28e74
         imagePullPolicy: IfNotPresent
         name: ship-cluster-worker
         ports:
@@ -1813,7 +1774,7 @@ spec:
         - name: SHIP_IMAGE
           value: replicated/ship
         - name: SHIP_TAG
-          value: 0.48.1
+          value: 0.49.0
         - name: SHIP_PULL_POLICY
           value: IfNotPresent
         - name: LOG_LEVEL
@@ -1845,7 +1806,7 @@ spec:
               name: github-app-private-key
         - name: GITHUB_INTEGRATION_ID
           value: ""
-        image: registry.replicated.com/ship-enterprise/ship-cluster-worker:3ebe4d6
+        image: registry.replicated.com/ship-enterprise/ship-cluster-worker:0f28e74
         imagePullPolicy: IfNotPresent
         name: ship-cluster-worker
         ports:
@@ -1901,7 +1862,7 @@ spec:
               name: ship-enterprise-postgres
         - name: LOG_FORMAT
           value: json
-        image: registry.replicated.com/ship-enterprise/ship-cluster-worker:3ebe4d6
+        image: registry.replicated.com/ship-enterprise/ship-cluster-worker:0f28e74
         imagePullPolicy: IfNotPresent
         name: ship-cluster-worker
         resources:
@@ -1958,7 +1919,7 @@ spec:
         - name: SHIP_IMAGE
           value: replicated/ship
         - name: SHIP_TAG
-          value: 0.48.1
+          value: 0.49.0
         - name: SHIP_PULL_POLICY
           value: IfNotPresent
         - name: LOG_LEVEL
@@ -1990,7 +1951,7 @@ spec:
               name: github-app-private-key
         - name: GITHUB_INTEGRATION_ID
           value: ""
-        image: registry.replicated.com/ship-enterprise/ship-cluster-worker:3ebe4d6
+        image: registry.replicated.com/ship-enterprise/ship-cluster-worker:0f28e74
         imagePullPolicy: IfNotPresent
         name: ship-cluster-worker
         ports:
@@ -2052,7 +2013,7 @@ spec:
         - name: SHIP_IMAGE
           value: replicated/ship
         - name: SHIP_TAG
-          value: 0.48.1
+          value: 0.49.0
         - name: SHIP_PULL_POLICY
           value: IfNotPresent
         - name: LOG_LEVEL
@@ -2084,7 +2045,7 @@ spec:
               name: github-app-private-key
         - name: GITHUB_INTEGRATION_ID
           value: ""
-        image: registry.replicated.com/ship-enterprise/ship-cluster-worker:3ebe4d6
+        image: registry.replicated.com/ship-enterprise/ship-cluster-worker:0f28e74
         imagePullPolicy: IfNotPresent
         name: ship-cluster-worker
         ports:
@@ -2133,7 +2094,7 @@ spec:
         - name: SHIP_IMAGE
           value: replicated/ship
         - name: SHIP_TAG
-          value: 0.48.1
+          value: 0.49.0
         - name: SHIP_PULL_POLICY
           value: IfNotPresent
         - name: LOG_LEVEL
@@ -2164,7 +2125,7 @@ spec:
           value: ""
         - name: LOG_FORMAT
           value: json
-        image: registry.replicated.com/ship-enterprise/ship-cluster-worker:3ebe4d6
+        image: registry.replicated.com/ship-enterprise/ship-cluster-worker:0f28e74
         imagePullPolicy: IfNotPresent
         name: ship-cluster-worker
         ports:
@@ -2227,7 +2188,7 @@ spec:
               key: secretkey
               name: s3-secret
         - name: MINIO_BROWSER
-          value: "on"
+          value: true
         image: minio/minio:RELEASE.2019-07-17T22-54-12Z
         imagePullPolicy: IfNotPresent
         livenessProbe:
@@ -2642,7 +2603,7 @@ spec:
               name: ship-enterprise-postgres
         - name: ENSURE_LOCAL_CLUSTER
           value: ""
-        image: registry.replicated.com/ship-enterprise/ship-cluster-api:3ebe4d6
+        image: registry.replicated.com/ship-enterprise/ship-cluster-api:0f28e74
         imagePullPolicy: IfNotPresent
         name: ship-cluster-local-cluster
       imagePullSecrets:
