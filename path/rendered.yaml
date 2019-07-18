@@ -1,0 +1,4009 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: heptio-contour
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  labels:
+    control-plane: controller-manager
+    controller-tools.k8s.io: "1.0"
+  name: schemahero-system
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: ship-operator-system
+---
+apiVersion: apiextensions.k8s.io/v1beta1
+kind: CustomResourceDefinition
+metadata:
+  creationTimestamp: null
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: databases.databases.schemahero.io
+spec:
+  group: databases.schemahero.io
+  names:
+    kind: Database
+    plural: databases
+  scope: Namespaced
+  subresources:
+    status: {}
+  validation:
+    openAPIV3Schema:
+      properties:
+        apiVersion:
+          description: 'APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#resources'
+          type: string
+        connection:
+          properties:
+            mysql:
+              properties:
+                uri:
+                  properties:
+                    value:
+                      type: string
+                    valueFrom:
+                      properties:
+                        secretKeyRef:
+                          properties:
+                            key:
+                              type: string
+                            name:
+                              type: string
+                          required:
+                          - name
+                          - key
+                          type: object
+                      type: object
+                  type: object
+              type: object
+            postgres:
+              properties:
+                uri:
+                  properties:
+                    value:
+                      type: string
+                    valueFrom:
+                      properties:
+                        secretKeyRef:
+                          properties:
+                            key:
+                              type: string
+                            name:
+                              type: string
+                          required:
+                          - name
+                          - key
+                          type: object
+                      type: object
+                  type: object
+              type: object
+          type: object
+        kind:
+          description: 'Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#types-kinds'
+          type: string
+        metadata:
+          type: object
+        schemahero:
+          properties:
+            image:
+              type: string
+            nodeSelector:
+              type: object
+          type: object
+        status:
+          properties:
+            isConnected:
+              type: boolean
+            lastPing:
+              type: string
+          required:
+          - isConnected
+          - lastPing
+          type: object
+  version: v1alpha2
+status:
+  acceptedNames:
+    kind: ""
+    plural: ""
+  conditions: []
+  storedVersions: []
+---
+apiVersion: apiextensions.k8s.io/v1beta1
+kind: CustomResourceDefinition
+metadata:
+  labels:
+    component: ingressroute
+  name: ingressroutes.contour.heptio.com
+spec:
+  additionalPrinterColumns:
+  - JSONPath: .spec.virtualhost.fqdn
+    description: Fully qualified domain name
+    name: FQDN
+    type: string
+  - JSONPath: .spec.virtualhost.tls.secretName
+    description: Secret with TLS credentials
+    name: TLS Secret
+    type: string
+  - JSONPath: .spec.routes[0].match
+    description: First routes defined
+    name: First route
+    type: string
+  - JSONPath: .status.currentStatus
+    description: The current status of the IngressRoute
+    name: Status
+    type: string
+  - JSONPath: .status.description
+    description: Description of the current status
+    name: Status Description
+    type: string
+  group: contour.heptio.com
+  names:
+    kind: IngressRoute
+    plural: ingressroutes
+  scope: Namespaced
+  validation:
+    openAPIV3Schema:
+      properties:
+        spec:
+          properties:
+            healthCheck:
+              properties:
+                healthyThresholdCount:
+                  type: integer
+                intervalSeconds:
+                  type: integer
+                path:
+                  pattern: ^\/.*$
+                  type: string
+                timeoutSeconds:
+                  type: integer
+                unhealthyThresholdCount:
+                  type: integer
+              required:
+              - path
+              type: object
+            routes:
+              items:
+                properties:
+                  delegate:
+                    properties:
+                      name:
+                        pattern: ^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$
+                        type: string
+                      namespace:
+                        pattern: ^[a-z0-9]([-a-z0-9]*[a-z0-9])?$
+                        type: string
+                    required:
+                    - name
+                    type: object
+                  match:
+                    pattern: ^\/.*$
+                    type: string
+                  services:
+                    items:
+                      properties:
+                        healthCheck:
+                          properties:
+                            healthyThresholdCount:
+                              type: integer
+                            intervalSeconds:
+                              type: integer
+                            path:
+                              pattern: ^\/.*$
+                              type: string
+                            timeoutSeconds:
+                              type: integer
+                            unhealthyThresholdCount:
+                              type: integer
+                          required:
+                          - path
+                          type: object
+                        name:
+                          pattern: ^[a-z]([-a-z0-9]*[a-z0-9])?$
+                          type: string
+                        port:
+                          type: integer
+                        strategy:
+                          enum:
+                          - RoundRobin
+                          - WeightedLeastRequest
+                          - Random
+                          - RingHash
+                          - Maglev
+                          type: string
+                        weight:
+                          type: integer
+                      required:
+                      - name
+                      - port
+                      type: object
+                    type: array
+                required:
+                - match
+              type: array
+            strategy:
+              enum:
+              - RoundRobin
+              - WeightedLeastRequest
+              - Random
+              - RingHash
+              - Maglev
+              type: string
+            virtualhost:
+              properties:
+                fqdn:
+                  pattern: ^([a-zA-Z0-9]+(-[a-zA-Z0-9]+)*\.)+[a-z0-9]{2,}$
+                  type: string
+                tls:
+                  properties:
+                    minimumProtocolVersion:
+                      enum:
+                      - "1.3"
+                      - "1.2"
+                      - "1.1"
+                      type: string
+                    secretName:
+                      pattern: ^[a-z0-9]([-a-z0-9]*[a-z0-9])?([\.\/][a-z0-9]([-a-z0-9]*[a-z0-9])?)*$
+                      type: string
+  version: v1beta1
+---
+apiVersion: apiextensions.k8s.io/v1beta1
+kind: CustomResourceDefinition
+metadata:
+  creationTimestamp: null
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: migrations.schemas.schemahero.io
+spec:
+  group: schemas.schemahero.io
+  names:
+    kind: Migration
+    plural: migrations
+  scope: Namespaced
+  validation:
+    openAPIV3Schema:
+      properties:
+        apiVersion:
+          description: 'APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#resources'
+          type: string
+        kind:
+          description: 'Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#types-kinds'
+          type: string
+        metadata:
+          type: object
+        spec:
+          type: object
+        status:
+          type: object
+  version: v1alpha2
+status:
+  acceptedNames:
+    kind: ""
+    plural: ""
+  conditions: []
+  storedVersions: []
+---
+apiVersion: apiextensions.k8s.io/v1beta1
+kind: CustomResourceDefinition
+metadata:
+  creationTimestamp: null
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: shipwatches.ship.replicated.com
+spec:
+  group: ship.replicated.com
+  names:
+    kind: ShipWatch
+    plural: shipwatches
+  scope: Namespaced
+  validation:
+    openAPIV3Schema:
+      properties:
+        apiVersion:
+          type: string
+        kind:
+          type: string
+        metadata:
+          type: object
+        spec:
+          properties:
+            actions:
+              items:
+                properties:
+                  name:
+                    type: string
+                  pullRequest:
+                    properties:
+                      basePath:
+                        type: string
+                      github:
+                        properties:
+                          branch:
+                            type: string
+                          key:
+                            properties:
+                              valueFrom:
+                                properties:
+                                  secretKeyRef:
+                                    properties:
+                                      key:
+                                        type: string
+                                      name:
+                                        type: string
+                                      serviceAccountName:
+                                        type: string
+                                    required:
+                                    - name
+                                    - key
+                                    - serviceAccountName
+                                    type: object
+                                type: object
+                            type: object
+                          owner:
+                            type: string
+                          path:
+                            type: string
+                          repo:
+                            type: string
+                          token:
+                            properties:
+                              valueFrom:
+                                properties:
+                                  secretKeyRef:
+                                    properties:
+                                      key:
+                                        type: string
+                                      name:
+                                        type: string
+                                      serviceAccountName:
+                                        type: string
+                                    required:
+                                    - name
+                                    - key
+                                    - serviceAccountName
+                                    type: object
+                                type: object
+                            type: object
+                          username:
+                            type: string
+                        required:
+                        - username
+                        - owner
+                        - repo
+                        - branch
+                        - token
+                        - key
+                        type: object
+                      message:
+                        type: string
+                    required:
+                    - message
+                    - basePath
+                    type: object
+                  webhook:
+                    properties:
+                      payload:
+                        type: string
+                      secret:
+                        type: string
+                      uri:
+                        type: string
+                    required:
+                    - uri
+                    - payload
+                    type: object
+                required:
+                - name
+                type: object
+              minItems: 1
+              type: array
+            environment:
+              items:
+                type: object
+              type: array
+            images:
+              items:
+                properties:
+                  image:
+                    type: string
+                  imagePullPolicy:
+                    type: string
+                  tag:
+                    type: string
+                required:
+                - image
+                - tag
+                - imagePullPolicy
+                type: object
+              type: array
+            state:
+              properties:
+                valueFrom:
+                  properties:
+                    secretKeyRef:
+                      properties:
+                        key:
+                          type: string
+                        name:
+                          type: string
+                        serviceAccountName:
+                          type: string
+                      required:
+                      - name
+                      - key
+                      - serviceAccountName
+                      type: object
+                  type: object
+              type: object
+            watchInterval:
+              type: string
+          required:
+          - state
+          type: object
+        status:
+          type: object
+      type: object
+  version: v1beta1
+status:
+  acceptedNames:
+    kind: ""
+    plural: ""
+  conditions: []
+  storedVersions: []
+---
+apiVersion: apiextensions.k8s.io/v1beta1
+kind: CustomResourceDefinition
+metadata:
+  creationTimestamp: null
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: tables.schemas.schemahero.io
+spec:
+  group: schemas.schemahero.io
+  names:
+    kind: Table
+    plural: tables
+  scope: Namespaced
+  validation:
+    openAPIV3Schema:
+      properties:
+        apiVersion:
+          description: 'APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#resources'
+          type: string
+        kind:
+          description: 'Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#types-kinds'
+          type: string
+        metadata:
+          type: object
+        spec:
+          properties:
+            database:
+              type: string
+            name:
+              type: string
+            requires:
+              items:
+                type: string
+              type: array
+            schema:
+              properties:
+                mysql:
+                  properties:
+                    columns:
+                      items:
+                        properties:
+                          constraints:
+                            properties:
+                              notNull:
+                                type: boolean
+                            type: object
+                          default:
+                            type: string
+                          name:
+                            type: string
+                          type:
+                            type: string
+                        required:
+                        - name
+                        - type
+                        type: object
+                      type: array
+                    foreignKeys:
+                      items:
+                        properties:
+                          columns:
+                            items:
+                              type: string
+                            type: array
+                          name:
+                            type: string
+                          references:
+                            properties:
+                              columns:
+                                items:
+                                  type: string
+                                type: array
+                              table:
+                                type: string
+                            required:
+                            - table
+                            - columns
+                            type: object
+                        required:
+                        - columns
+                        - references
+                        type: object
+                      type: array
+                    isDeleted:
+                      type: boolean
+                    primaryKey:
+                      items:
+                        type: string
+                      type: array
+                  required:
+                  - primaryKey
+                  type: object
+                postgres:
+                  properties:
+                    columns:
+                      items:
+                        properties:
+                          constraints:
+                            properties:
+                              notNull:
+                                type: boolean
+                            type: object
+                          default:
+                            type: string
+                          name:
+                            type: string
+                          type:
+                            type: string
+                        required:
+                        - name
+                        - type
+                        type: object
+                      type: array
+                    foreignKeys:
+                      items:
+                        properties:
+                          columns:
+                            items:
+                              type: string
+                            type: array
+                          name:
+                            type: string
+                          references:
+                            properties:
+                              columns:
+                                items:
+                                  type: string
+                                type: array
+                              table:
+                                type: string
+                            required:
+                            - table
+                            - columns
+                            type: object
+                        required:
+                        - columns
+                        - references
+                        type: object
+                      type: array
+                    isDeleted:
+                      type: boolean
+                    primaryKey:
+                      items:
+                        type: string
+                      type: array
+                  required:
+                  - primaryKey
+                  type: object
+              type: object
+          required:
+          - database
+          - name
+          - schema
+          type: object
+        status:
+          type: object
+  version: v1alpha2
+status:
+  acceptedNames:
+    kind: ""
+    plural: ""
+  conditions: []
+  storedVersions: []
+---
+apiVersion: apiextensions.k8s.io/v1beta1
+kind: CustomResourceDefinition
+metadata:
+  labels:
+    component: tlscertificatedelegation
+  name: tlscertificatedelegations.contour.heptio.com
+spec:
+  group: contour.heptio.com
+  names:
+    kind: TLSCertificateDelegation
+    plural: tlscertificatedelegations
+  scope: Namespaced
+  validation:
+    openAPIV3Schema:
+      properties:
+        spec:
+          properties:
+            delegations:
+              items:
+                properties:
+                  match:
+                    type: string
+                  targetNamespaces:
+                    type: array
+                required:
+                - secretName
+                - targetNamespaces
+                type: object
+              type: array
+  version: v1beta1
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: minio
+  namespace: default
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: ship-cluster-worker-analyze
+  namespace: default
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: ship-cluster-worker-edit
+  namespace: default
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: ship-cluster-worker-init
+  namespace: default
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: ship-cluster-worker-update
+  namespace: default
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: ship-cluster-worker-watch
+  namespace: default
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: contour
+  namespace: heptio-contour
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  creationTimestamp: null
+  name: schemahero-manager-role
+rules:
+- apiGroups:
+  - apps
+  resources:
+  - deployments
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - apps
+  resources:
+  - deployments/status
+  verbs:
+  - get
+  - update
+  - patch
+- apiGroups:
+  - databases.schemahero.io
+  resources:
+  - databases
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - databases.schemahero.io
+  resources:
+  - databases/status
+  verbs:
+  - get
+  - update
+  - patch
+- apiGroups:
+  - apps
+  resources:
+  - deployments
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - apps
+  resources:
+  - deployments/status
+  verbs:
+  - get
+  - update
+  - patch
+- apiGroups:
+  - schemas.schemahero.io
+  resources:
+  - migrations
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - schemas.schemahero.io
+  resources:
+  - migrations/status
+  verbs:
+  - get
+  - update
+  - patch
+- apiGroups:
+  - apps
+  resources:
+  - deployments
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - apps
+  resources:
+  - deployments/status
+  verbs:
+  - get
+  - update
+  - patch
+- apiGroups:
+  - schemas.schemahero.io
+  resources:
+  - tables
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - schemas.schemahero.io
+  resources:
+  - tables/status
+  verbs:
+  - get
+  - update
+  - patch
+- apiGroups:
+  - admissionregistration.k8s.io
+  resources:
+  - mutatingwebhookconfigurations
+  - validatingwebhookconfigurations
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - ""
+  resources:
+  - secrets
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - ""
+  resources:
+  - services
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - ""
+  resources:
+  - pods
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - ""
+  resources:
+  - configmaps
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - rbac.authorization.k8s.io
+  resources:
+  - roles
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - rbac.authorization.k8s.io
+  resources:
+  - rolebindings
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - ""
+  resources:
+  - serviceaccounts
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: schemahero-proxy-role
+rules:
+- apiGroups:
+  - authentication.k8s.io
+  resources:
+  - tokenreviews
+  verbs:
+  - create
+- apiGroups:
+  - authorization.k8s.io
+  resources:
+  - subjectaccessreviews
+  verbs:
+  - create
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  creationTimestamp: null
+  name: ship-operator-manager-role
+rules:
+- apiGroups:
+  - batch
+  resources:
+  - jobs
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - ""
+  resources:
+  - pods
+  - secrets
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - ship.replicated.com
+  resources:
+  - shipwatches
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+---
+apiVersion: rbac.authorization.k8s.io/v1beta1
+kind: ClusterRole
+metadata:
+  name: contour
+rules:
+- apiGroups:
+  - ""
+  resources:
+  - configmaps
+  - endpoints
+  - nodes
+  - pods
+  - secrets
+  verbs:
+  - list
+  - watch
+- apiGroups:
+  - ""
+  resources:
+  - nodes
+  verbs:
+  - get
+- apiGroups:
+  - ""
+  resources:
+  - services
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - extensions
+  resources:
+  - ingresses
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - contour.heptio.com
+  resources:
+  - ingressroutes
+  - tlscertificatedelegations
+  verbs:
+  - get
+  - list
+  - watch
+  - put
+  - post
+  - patch
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: analyze-worker-get-namespaces
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-admin
+subjects:
+- kind: ServiceAccount
+  name: ship-cluster-worker-analyze
+  namespace: default
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: init-worker-list-pods
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-admin
+subjects:
+- kind: ServiceAccount
+  name: ship-cluster-worker-init
+  namespace: default
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  creationTimestamp: null
+  name: schemahero-manager-rolebinding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: schemahero-manager-role
+subjects:
+- kind: ServiceAccount
+  name: default
+  namespace: schemahero-system
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: schemahero-proxy-rolebinding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: schemahero-proxy-role
+subjects:
+- kind: ServiceAccount
+  name: default
+  namespace: schemahero-system
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  creationTimestamp: null
+  name: ship-operator-manager-rolebinding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: ship-operator-manager-role
+subjects:
+- kind: ServiceAccount
+  name: default
+  namespace: ship-operator-system
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: ship-worker-list-pods
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-admin
+subjects:
+- kind: ServiceAccount
+  name: ship-cluster-worker-edit
+  namespace: default
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: update-worker-list-pods
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-admin
+subjects:
+- kind: ServiceAccount
+  name: ship-cluster-worker-update
+  namespace: default
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: watch-worker-get-namespaces
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-admin
+subjects:
+- kind: ServiceAccount
+  name: ship-cluster-worker-watch
+  namespace: default
+---
+apiVersion: rbac.authorization.k8s.io/v1beta1
+kind: ClusterRoleBinding
+metadata:
+  name: contour
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: contour
+subjects:
+- kind: ServiceAccount
+  name: contour
+  namespace: heptio-contour
+---
+apiVersion: v1
+data:
+  initialize: "#!/bin/sh\nset -e ; # Have script exit in the event of a failed command.\n\n# connectToMinio\n# Use a check-sleep-check loop to wait for Minio service to be available\nconnectToMinio() {\n  SCHEME=$1\n  ATTEMPTS=0 ; LIMIT=29 ; # Allow 30 attempts\n  set -e ; # fail if we can't read the keys.\n  ACCESS=$(cat /config/accesskey) ; SECRET=$(cat /config/secretkey) ;\n  set +e ; # The connections to minio are allowed to fail.\n  echo \"Connecting to Minio server: $SCHEME://$MINIO_ENDPOINT:$MINIO_PORT\" ;\n  MC_COMMAND=\"mc config host add myminio $SCHEME://$MINIO_ENDPOINT:$MINIO_PORT $ACCESS $SECRET\" ;\n  $MC_COMMAND ;\n  STATUS=$? ;\n  until [ $STATUS = 0 ]\n  do\n    ATTEMPTS=`expr $ATTEMPTS + 1` ;\n    echo \\\"Failed attempts: $ATTEMPTS\\\" ;\n    if [ $ATTEMPTS -gt $LIMIT ]; then\n      exit 1 ;\n    fi ;\n    sleep 2 ; # 1 second intervals between attempts\n    $MC_COMMAND ;\n    STATUS=$? ;\n  done ;\n  set -e ; # reset `e` as active\n  return 0\n}\n\n# checkBucketExists ($bucket)\n# Check if the bucket exists, by using the exit code of `mc ls`\ncheckBucketExists() {\n  BUCKET=$1\n  CMD=$(/usr/bin/mc ls myminio/$BUCKET > /dev/null 2>&1)\n  return $?\n}\n\n# createBucket ($bucket, $policy, $purge)\n# Ensure bucket exists, purging if asked to\ncreateBucket() {\n  BUCKET=$1\n  POLICY=$2\n  PURGE=$3\n\n  # Purge the bucket, if set & exists\n  # Since PURGE is user input, check explicitly for `true`\n  if [ $PURGE = true ]; then\n    if checkBucketExists $BUCKET ; then\n      echo \"Purging bucket '$BUCKET'.\"\n      set +e ; # don't exit if this fails\n      /usr/bin/mc rm -r --force myminio/$BUCKET\n      set -e ; # reset `e` as active\n    else\n      echo \"Bucket '$BUCKET' does not exist, skipping purge.\"\n    fi\n  fi\n\n  # Create the bucket if it does not exist\n  if ! checkBucketExists $BUCKET ; then\n    echo \"Creating bucket '$BUCKET'\"\n    /usr/bin/mc mb myminio/$BUCKET\n  else\n    echo \"Bucket '$BUCKET' already exists.\"\n  fi\n\n  # At this point, the bucket should exist, skip checking for existence\n  # Set policy on the bucket\n  echo \"Setting policy of bucket '$BUCKET' to '$POLICY'.\"\n  /usr/bin/mc policy $POLICY myminio/$BUCKET\n}\n\n# Try connecting to Minio instance\nscheme=http\nconnectToMinio $scheme\n# Create the buckets\ncreateBucket ship-enterprise none "
+kind: ConfigMap
+metadata:
+  labels:
+    app: minio
+    release: minio
+  name: minio
+---
+apiVersion: v1
+data:
+  start-ship-cluster-ui.sh: |
+    #!/bin/bash
+    sed -i 's/###_GRAPHQL_ENDPOINT_###/https:\/\/test\/graphql/g' /usr/share/nginx/html/index.html
+    sed -i 's/###_REST_ENDPOINT_###/https:\/\/test\/api/g' /usr/share/nginx/html/index.html
+    sed -i 's/###_GITHUB_CLIENT_ID_###//g' /usr/share/nginx/html/index.html
+    sed -i 's/###_SHIPDOWNLOAD_ENDPOINT_###/https:\/\/test\/api\/v1\/download/g' /usr/share/nginx/html/index.html
+    sed -i 's/###_SHIPINIT_ENDPOINT_###/https:\/\/test\/api\/v1\/init\//g' /usr/share/nginx/html/index.html
+    sed -i 's/###_SHIPUPDATE_ENDPOINT_###/https:\/\/test\/api\/v1\/update\//g' /usr/share/nginx/html/index.html
+    sed -i 's/###_SHIPEDIT_ENDPOINT_###/https:\/\/test\/api\/v1\/edit\//g' /usr/share/nginx/html/index.html
+    sed -i 's/###_GITHUB_REDIRECT_URI_###/https:\/\/test\/auth\/github\/callback/g' /usr/share/nginx/html/index.html
+    sed -i 's/###_GITHUB_INSTALL_URL_###//g' /usr/share/nginx/html/index.html
+    sed -i 's/###_INSTALL_ENDPOINT_###/https:\/\/test\/api\/install/g' /usr/share/nginx/html/index.html
+
+    nginx -g "daemon off;"
+kind: ConfigMap
+metadata:
+  name: ship-cluster-ui-scripts
+---
+apiVersion: v1
+data:
+  tls.crt: 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D5gk8J94qu+eFGcAqloAmGi9QtcBUIGoGaLKTADCEY1iAtjRUaH/FGmKo8NULFIj0pqUjI+/Q/pHnCUAX7vHx8cax8e/ViHFPgSgZXSql58QfeS/IuEZgJnk+y+Y4F/lHxvTEkV8pm02AAABnWlUWHRYTUw6Y29tLmFkb2JlLnhtcAAAAAAAPHg6eG1wbWV0YSB4bWxuczp4PSJhZG9iZTpuczptZXRhLyIgeDp4bXB0az0iWE1QIENvcmUgNS40LjAiPgogICA8cmRmOlJERiB4bWxuczpyZGY9Imh0dHA6Ly93d3cudzMub3JnLzE5OTkvMDIvMjItcmRmLXN5bnRheC1ucyMiPgogICAgICA8cmRmOkRlc2NyaXB0aW9uIHJkZjphYm91dD0iIgogICAgICAgICAgICB4bWxuczpleGlmPSJodHRwOi8vbnMuYWRvYmUuY29tL2V4aWYvMS4wLyI+CiAgICAgICAgIDxleGlmOlBpeGVsWERpbWVuc2lvbj4zMDI8L2V4aWY6UGl4ZWxYRGltZW5zaW9uPgogICAgICAgICA8ZXhpZjpQaXhlbFlEaW1lbnNpb24+MTg1PC9leGlmOlBpeGVsWURpbWVuc2lvbj4KICAgICAgPC9yZGY6RGVzY3JpcHRpb24+CiAgIDwvcmRmOlJERj4KPC94OnhtcG1ldGE+CjR7uRoAABLKSURBVHgB7ZxLqO5TH8fXOY5bUeQWEwwUSRkQiUJJbmVgSCRKUUbKwMBAlIGRgetMKWRAkSgGEqGQKJRrblGKcve++7Oc737X+b/P3ufZu332eX5nf371f9Zav/Vbl+ez1vq+6/+c/dr2nyVrmgQksEzgn3/+adu2besPTo7IX3/91ct///132759eyOGPA9GSgz+se78889vZ511Vvvwww973Goff/zxRzvnnHNWC5mr7uyzz25XXHFFe+mll9rLL7+8S5s77rijl++6665G3Hnnndc+++yzdvrpp3f/d9991x588MF2wAEHtNtuu63tt99+y+3vu+++3i/f87HHHuv+q6++up1yyik9z/yfeOKJ/l2POOKIduutt7YvvviinXjiib3+559/bg8//HD78ccf27HHHttoe9hhh/W6Tz/9tD3yyCM9P8/H9nmCjJHAViOAcCFGiBCWA4wfH+KF7dixowsbeWJG0aL9KIDEbIadfPLJfZipaOF844032sEHH9yFg7kjHKeddlp79tln2+uvv96OOeaYdsMNNzRE5rnnnusM3n///fb00093waHNQQcd1Pu/7rrrumi98847vf7333/vYoQoYfBAtBBQnkMPPbRdddVVve7aa69tBx54YBfAV155pcchtvPajnkDjZPAViOQmxXfm1sXD4cxN6upuCFU1EfciEfISDfTEJdff/115pAI0tQeffTR9vnnn3c3bc8444zGjQkhu/jii9uXX37Z3n777WmzdtJJJ7WPP/64Pfnkk73uo48+arfffntv/9prr3UfohQBPf744xsPxjhwxF588cX+9MKcHwrXnKAM2zoEIkikCFGEJ7cs/KMv5bSb3rTwb6b99ttv/VbFjYZb0GiHH354L/JaFxvz33zzTXfzqria5Vb1ySefLIchigjmcccdt+xbSUCff/75dvnll/cbGsG8Pj7++OMt4y93sELGV8UVwOje2gQQLIQqAoUY8Yw3KAQpD7QSP97UuFnQx2Y+7733Xl+8Cy+88P/GPfPMM/tr4A8//LDLAmd+ETYq4xu/QxohNNgJJ5ywHIfY8Rr6/fffd19i0w/l5N9666125513tnvuuachYtzwLrvssuX6xK2UeuMKXVMJ7CSAGEWgpmKU2xP1WF53OGAIG4f8zz//7CJGXep3dr0pybvvvttf8c4999x2yCGHtFdffbUdddRR7dJLL+2/K73wwgu7zOPGG2/sP6ofeeSRjTaI0tdff70cg9jxujjerrjJ8cM7P8xfdNFFjdfEK6+8sreZ9Vq53NnOzN133718y4qIroWVwjUlannLE0CEcmuKUOEbf5fZf//9lwUKwcK4pXGgiY2lfcqbld57773tpptu6v9amH8xZOxnnnmm/3Y1zoNXxWuuuaa7eN176KGHlqv511DaX3/99e3+++9f9pN54IEH2s0339wuuOCC/uCjf34v44f4qcEmrPhdC8G75ZZbethPP/3UnnrqqWmTFcvbliD/j/KKYVZIYOsQGI8EeR4EKK+KCBQ3Lg48eW5YlLkxkCaOeg4nN5YPPvhgtwCJ34g/hxgH4hWM1z/mmB/gU8+fQlxyySX9dY2xedWb9eN94ldKESna5vVxpbhZfubH2Gsd1xvXLJr6tjwBxIpbF4YYTcv4EC1EKrczYsnnFTFiF/GjfrMNMVlJULhB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
+  tls.key: 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D5gk8J94qu+eFGcAqloAmGi9QtcBUIGoGaLKTADCEY1iAtjRUaH/FGmKo8NULFIj0pqUjI+/Q/pHnCUAX7vHx8cax8e/ViHFPgSgZXSql58QfeS/IuEZgJnk+y+Y4F/lHxvTEkV8pm02AAABnWlUWHRYTUw6Y29tLmFkb2JlLnhtcAAAAAAAPHg6eG1wbWV0YSB4bWxuczp4PSJhZG9iZTpuczptZXRhLyIgeDp4bXB0az0iWE1QIENvcmUgNS40LjAiPgogICA8cmRmOlJERiB4bWxuczpyZGY9Imh0dHA6Ly93d3cudzMub3JnLzE5OTkvMDIvMjItcmRmLXN5bnRheC1ucyMiPgogICAgICA8cmRmOkRlc2NyaXB0aW9uIHJkZjphYm91dD0iIgogICAgICAgICAgICB4bWxuczpleGlmPSJodHRwOi8vbnMuYWRvYmUuY29tL2V4aWYvMS4wLyI+CiAgICAgICAgIDxleGlmOlBpeGVsWERpbWVuc2lvbj4zMDI8L2V4aWY6UGl4ZWxYRGltZW5zaW9uPgogICAgICAgICA8ZXhpZjpQaXhlbFlEaW1lbnNpb24+MTg1PC9leGlmOlBpeGVsWURpbWVuc2lvbj4KICAgICAgPC9yZGY6RGVzY3JpcHRpb24+CiAgIDwvcmRmOlJERj4KPC94OnhtcG1ldGE+CjR7uRoAABLKSURBVHgB7ZxLqO5TH8fXOY5bUeQWEwwUSRkQiUJJbmVgSCRKUUbKwMBAlIGRgetMKWRAkSgGEqGQKJRrblGKcve++7Oc737X+b/P3ufZu332eX5nf371f9Zav/Vbl+ez1vq+6/+c/dr2nyVrmgQksEzgn3/+adu2besPTo7IX3/91ct///132759eyOGPA9GSgz+se78889vZ511Vvvwww973Goff/zxRzvnnHNWC5mr7uyzz25XXHFFe+mll9rLL7+8S5s77rijl++6665G3Hnnndc+++yzdvrpp3f/d9991x588MF2wAEHtNtuu63tt99+y+3vu+++3i/f87HHHuv+q6++up1yyik9z/yfeOKJ/l2POOKIduutt7YvvviinXjiib3+559/bg8//HD78ccf27HHHttoe9hhh/W6Tz/9tD3yyCM9P8/H9nmCjJHAViOAcCFGiBCWA4wfH+KF7dixowsbeWJG0aL9KIDEbIadfPLJfZipaOF844032sEHH9yFg7kjHKeddlp79tln2+uvv96OOeaYdsMNNzRE5rnnnusM3n///fb00093waHNQQcd1Pu/7rrrumi98847vf7333/vYoQoYfBAtBBQnkMPPbRdddVVve7aa69tBx54YBfAV155pcchtvPajnkDjZPAViOQmxXfm1sXD4cxN6upuCFU1EfciEfISDfTEJdff/115pAI0tQeffTR9vnnn3c3bc8444zGjQkhu/jii9uXX37Z3n777WmzdtJJJ7WPP/64Pfnkk73uo48+arfffntv/9prr3UfohQBPf744xsPxjhwxF588cX+9MKcHwrXnKAM2zoEIkikCFGEJ7cs/KMv5bSb3rTwb6b99ttv/VbFjYZb0GiHH354L/JaFxvz33zzTXfzqria5Vb1ySefLIchigjmcccdt+xbSUCff/75dvnll/cbGsG8Pj7++OMt4y93sELGV8UVwOje2gQQLIQqAoUY8Yw3KAQpD7QSP97UuFnQx2Y+7733Xl+8Cy+88P/GPfPMM/tr4A8//LDLAmd+ETYq4xu/QxohNNgJJ5ywHIfY8Rr6/fffd19i0w/l5N9666125513tnvuuachYtzwLrvssuX6xK2UeuMKXVMJ7CSAGEWgpmKU2xP1WF53OGAIG4f8zz//7CJGXep3dr0pybvvvttf8c4999x2yCGHtFdffbUdddRR7dJLL+2/K73wwgu7zOPGG2/sP6ofeeSRjTaI0tdff70cg9jxujjerrjJ8cM7P8xfdNFFjdfEK6+8sreZ9Vq53NnOzN133718y4qIroWVwjUlannLE0CEcmuKUOEbf5fZf//9lwUKwcK4pXGgiY2lfcqbld57773tpptu6v9amH8xZOxnnnmm/3Y1zoNXxWuuuaa7eN176KGHlqv511DaX3/99e3+++9f9pN54IEH2s0339wuuOCC/uCjf34v44f4qcEmrPhdC8G75ZZbethPP/3UnnrqqWmTFcvbliD/j/KKYVZIYOsQGI8EeR4EKK+KCBQ3Lg48eW5YlLkxkCaOeg4nN5YPPvhgtwCJ34g/hxgH4hWM1z/mmB/gU8+fQlxyySX9dY2xedWb9eN94ldKESna5vVxpbhZfubH2Gsd1xvXLJr6tjwBxIpbF4YYTcv4EC1EKrczYsnnFTFiF/GjfrMNMVlJULhB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
+kind: Secret
+metadata:
+  name: ship-enterprise-tls
+  namespace: default
+type: kubernetes.io/tls
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: schemahero-webhook-server-secret
+  namespace: schemahero-system
+---
+apiVersion: v1
+data:
+  .dockerconfigjson: |
+    eyJhdXRocyI6IHsicmVnaXN0cnkucmVwbGljYXRlZC5jb20iOnsidXNlcm5hbWUiOiJfd0RqeDRJejJlMDg3aF9oREx5eXktUUMyZENyeHFFNyIsInBhc3N3b3JkIjoiX3dEang0SXoyZTA4N2hfaERMeXl5LVFDMmRDcnhxRTciIH0gfSB9IA==
+kind: Secret
+metadata:
+  name: replicatedregistrykey
+  namespace: ship-operator-system
+type: kubernetes.io/dockerconfigjson
+---
+apiVersion: v1
+data:
+  private-key.pem: ""
+kind: Secret
+metadata:
+  name: github-app-private-key
+type: Opaque
+---
+apiVersion: v1
+data:
+  client-id: ""
+  client-secret: ""
+  install-url: ""
+  integration-id: ""
+kind: Secret
+metadata:
+  name: github-app
+---
+apiVersion: v1
+data:
+  postgresql-password: |
+    UXpJZVZxMjNFeXZxektTam5lTjJEMzRua01Kb0hHZFRIZ1Bub3BTaQ==
+kind: Secret
+metadata:
+  name: postgresql-secret
+type: Opaque
+---
+apiVersion: v1
+data:
+  .dockerconfigjson: eyJhdXRocyI6IHsicmVnaXN0cnkucmVwbGljYXRlZC5jb20iOnsidXNlcm5hbWUiOiJfd0RqeDRJejJlMDg3aF9oREx5eXktUUMyZENyeHFFNyIsInBhc3N3b3JkIjoiX3dEang0SXoyZTA4N2hfaERMeXl5LVFDMmRDcnhxRTciIH0gfSB9IA==
+kind: Secret
+metadata:
+  name: replicatedregistrykey
+type: kubernetes.io/dockerconfigjson
+---
+apiVersion: v1
+data:
+  accesskey: ODAycHo3TnFJZ2tSbGdMUWVIX2o5dXcybUVFdW5mUjM=
+  secretkey: UVplbkFNSUJOWlRrd01vMENZMEFfWjhkWUdmTGxNNVE=
+kind: Secret
+metadata:
+  name: s3-secret
+type: Opaque
+---
+apiVersion: v1
+data:
+  key: cWJTOEpDVXoxS29CVUtSYnJMcW5JcF9ydEFzeVBuaWVlRnZVbTkxT0Z4cXpSNnBvWk9yQkdWSVJfbVNEU09RWQ==
+kind: Secret
+metadata:
+  labels:
+    app: ship-cluster-api
+  name: session
+type: Opaque
+---
+apiVersion: v1
+data:
+  uri: cG9zdGdyZXNxbDovL3NoaXAtZW50ZXJwcmlzZTpRekllVnEyM0V5dnF6S1NqbmVOMkQzNG5rTUpvSEdkVEhnUG5vcFNpQHNoaXAtZW50ZXJwcmlzZS1wb3N0Z3Jlc3FsL3NoaXAtZW50ZXJwcmlzZT9jb25uZWN0X3RpbWVvdXQ9MTAmYXBwbGljYXRpb25fbmFtZT1zaGlwLWVudGVycHJpc2Umc3NsbW9kZT1kaXNhYmxl
+kind: Secret
+metadata:
+  name: ship-enterprise-postgres
+type: Opaque
+---
+apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+    service.beta.kubernetes.io/aws-load-balancer-backend-protocol: tcp
+  name: contour
+  namespace: heptio-contour
+spec:
+  ports:
+  - name: http
+    port: 80
+    protocol: TCP
+    targetPort: 8080
+  - name: https
+    port: 443
+    protocol: TCP
+    targetPort: 8443
+  selector:
+    app: contour
+  type: LoadBalancer
+---
+apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+    prometheus.io/port: "8443"
+    prometheus.io/scheme: https
+    prometheus.io/scrape: "true"
+  labels:
+    control-plane: controller-manager
+    controller-tools.k8s.io: "1.0"
+  name: schemahero-controller-manager-metrics-service
+  namespace: schemahero-system
+spec:
+  ports:
+  - name: https
+    port: 8443
+    targetPort: https
+  selector:
+    control-plane: controller-manager
+    controller-tools.k8s.io: "1.0"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    control-plane: controller-manager
+    controller-tools.k8s.io: "1.0"
+  name: schemahero-controller-manager-service
+  namespace: schemahero-system
+spec:
+  ports:
+  - port: 443
+  selector:
+    control-plane: controller-manager
+    controller-tools.k8s.io: "1.0"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    control-plane: controller-manager
+    controller-tools.k8s.io: "1.0"
+  name: ship-operator-controller-manager-service
+  namespace: ship-operator-system
+spec:
+  ports:
+  - port: 443
+  selector:
+    control-plane: controller-manager
+    controller-tools.k8s.io: "1.0"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: ship-cluster-worker-analyze
+  name: analyze-server
+spec:
+  ports:
+  - name: http
+    port: 3000
+    targetPort: analyze-server
+  selector:
+    app: ship-cluster-worker-analyze
+  type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: ship-cluster-worker-edit
+  name: edit-server
+spec:
+  ports:
+  - name: http
+    port: 3000
+    targetPort: edit-server
+  selector:
+    app: ship-cluster-worker-edit
+  type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: ship-cluster-worker-init
+  name: init-server
+spec:
+  ports:
+  - name: http
+    port: 3000
+    targetPort: init-server
+  selector:
+    app: ship-cluster-worker-init
+  type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: minio
+    release: minio
+  name: minio
+spec:
+  ports:
+  - name: service
+    port: 9000
+    protocol: TCP
+    targetPort: 9000
+  selector:
+    app: minio
+    release: minio
+  type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: ship-cluster-api
+  name: ship-cluster-api
+spec:
+  ports:
+  - name: http
+    port: 3000
+    targetPort: http
+  selector:
+    app: ship-cluster-api
+  type: NodePort
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: ship-cluster-ui
+  name: ship-cluster-ui
+spec:
+  ports:
+  - name: http
+    port: 3000
+    targetPort: http
+  selector:
+    app: ship-cluster-ui
+  type: NodePort
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: postgresql
+    release: ship-enterprise
+  name: ship-enterprise-postgresql-headless
+spec:
+  clusterIP: None
+  ports:
+  - name: postgresql
+    port: 5432
+    targetPort: postgresql
+  selector:
+    app: postgresql
+    release: ship-enterprise
+  type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: postgresql
+    release: ship-enterprise
+  name: ship-enterprise-postgresql
+spec:
+  ports:
+  - name: postgresql
+    port: 5432
+    targetPort: postgresql
+  selector:
+    app: postgresql
+    release: ship-enterprise
+    role: master
+  type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: ship-cluster-worker-update
+  name: update-server
+spec:
+  ports:
+  - name: http
+    port: 3000
+    targetPort: update-server
+  selector:
+    app: ship-cluster-worker-update
+  type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: ship-cluster-worker-watch
+  name: watch-server
+spec:
+  ports:
+  - name: http
+    port: 3000
+    targetPort: watch-server
+  selector:
+    app: ship-cluster-worker-watch
+  type: ClusterIP
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ship-cluster-api
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ship-cluster-api
+  template:
+    metadata:
+      labels:
+        app: ship-cluster-api
+    spec:
+      affinity:
+        podAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app
+                  operator: In
+                  values:
+                  - ship-www
+              topologyKey: kubernetes.io/hostname
+            weight: 1
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app
+                  operator: In
+                  values:
+                  - ship-cluster-api
+              topologyKey: kubernetes.io/hostname
+            weight: 2
+      containers:
+      - env:
+        - name: SESSION_KEY
+          valueFrom:
+            secretKeyRef:
+              key: key
+              name: session
+        - name: POSTGRES_URI
+          valueFrom:
+            secretKeyRef:
+              key: uri
+              name: ship-enterprise-postgres
+        - name: INIT_SERVER_URI
+          value: http://init-server:3000
+        - name: WATCH_SERVER_URI
+          value: http://watch-server:3000
+        - name: PINO_LOG_PRETTY
+          value: "1"
+        - name: S3_ENDPOINT
+          value: |
+            http://minio.default.svc.cluster.local:9000/
+        - name: S3_BUCKET_NAME
+          value: |
+            ship-enterprise
+        - name: S3_ACCESS_KEY_ID
+          value: |
+            802pz7NqIgkRlgLQeH_j9uw2mEEunfR3
+        - name: S3_SECRET_ACCESS_KEY
+          value: |
+            QZenAMIBNZTkwMo0CY0A_Z8dYGfLlM5Q
+        - name: S3_BUCKET_ENDPOINT
+          value: |
+            true
+        - name: SHIP_API_ADVERTISE_ENDPOINT
+          value: http://docker.for.mac.localhost:30065
+        - name: GITHUB_CLIENT_ID
+          valueFrom:
+            secretKeyRef:
+              key: client-id
+              name: github-app
+        - name: GITHUB_CLIENT_SECRET
+          valueFrom:
+            secretKeyRef:
+              key: client-secret
+              name: github-app
+        - name: GITHUB_INTEGRATION_ID
+          valueFrom:
+            secretKeyRef:
+              key: integration-id
+              name: github-app
+        - name: SHIP_API_ENDPOINT
+          value: http://ship-cluster-api.default.svc.cluster.local:3000
+        - name: TRACER_NAME
+          value: ship-cluster-api
+        - name: GITHUB_PRIVATE_KEY_FILE
+          value: /keys/github/private-key.pem
+        image: registry.replicated.com/ship-enterprise/ship-cluster-api:b9c0c0d
+        imagePullPolicy: IfNotPresent
+        name: ship-cluster-api
+        ports:
+        - containerPort: 3000
+          name: http
+        - containerPort: 9229
+          name: debug
+        readinessProbe:
+          httpGet:
+            path: /healthz
+            port: 3000
+          initialDelaySeconds: 2
+          periodSeconds: 2
+        volumeMounts:
+        - mountPath: /keys/github
+          name: github-app-private-key
+          readOnly: true
+      imagePullSecrets:
+      - name: replicatedregistrykey
+      restartPolicy: Always
+      volumes:
+      - name: github-app-private-key
+        secret:
+          secretName: github-app-private-key
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ship-cluster-ui
+spec:
+  selector:
+    matchLabels:
+      app: ship-cluster-ui
+  template:
+    metadata:
+      labels:
+        app: ship-cluster-ui
+    spec:
+      containers:
+      - args:
+        - /scripts/start-ship-cluster-ui.sh
+        image: registry.replicated.com/ship-enterprise/ship-cluster-ui:b9c0c0d
+        imagePullPolicy: IfNotPresent
+        name: ship-cluster-ui
+        ports:
+        - containerPort: 3000
+          name: http
+        readinessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /healthz
+            port: 3000
+            scheme: HTTP
+          initialDelaySeconds: 2
+          periodSeconds: 2
+          successThreshold: 1
+          timeoutSeconds: 1
+        volumeMounts:
+        - mountPath: /scripts/start-ship-cluster-ui.sh
+          name: ship-cluster-ui-scripts
+          subPath: start-ship-cluster-ui.sh
+      imagePullSecrets:
+      - name: replicatedregistrykey
+      volumes:
+      - configMap:
+          defaultMode: 484
+          name: ship-cluster-ui-scripts
+        name: ship-cluster-ui-scripts
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ship-cluster-worker-analyze
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ship-cluster-worker-analyze
+  template:
+    metadata:
+      labels:
+        app: ship-cluster-worker-analyze
+    spec:
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app
+                  operator: In
+                  values:
+                  - ship-cluster-worker-analyze
+              topologyKey: kubernetes.io/hostname
+            weight: 2
+      containers:
+      - args:
+        - analyze
+        env:
+        - name: LOG_LEVEL
+          value: warn
+        - name: POSTGRES_URI
+          valueFrom:
+            secretKeyRef:
+              key: uri
+              name: ship-enterprise-postgres
+        - name: ANALYZE_IMAGE
+          value: replicated/analyze
+        - name: ANALYZE_TAG
+          value: alpha
+        - name: ANALYZE_PULL_POLICY
+          value: IfNotPresent
+        - name: LOG_FORMAT
+          value: json
+        image: registry.replicated.com/ship-enterprise/ship-cluster-worker:b9c0c0d
+        imagePullPolicy: IfNotPresent
+        name: ship-cluster-worker
+        ports:
+        - containerPort: 3000
+          name: analyze-server
+        readinessProbe:
+          httpGet:
+            path: /healthz
+            port: 3000
+          initialDelaySeconds: 2
+          periodSeconds: 2
+        resources:
+          limits:
+            memory: 512Mi
+          requests:
+            memory: 256Mi
+      imagePullSecrets:
+      - name: replicatedregistrykey
+      restartPolicy: Always
+      serviceAccountName: ship-cluster-worker-analyze
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ship-cluster-worker-edit
+spec:
+  selector:
+    matchLabels:
+      app: ship-cluster-worker-edit
+  template:
+    metadata:
+      labels:
+        app: ship-cluster-worker-edit
+    spec:
+      affinity:
+        podAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app
+                  operator: In
+                  values:
+                  - ship-cluster-worker-edit
+              topologyKey: kubernetes.io/hostname
+            weight: 1
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app
+                  operator: In
+                  values:
+                  - ship-cluster-worker-edit
+              topologyKey: kubernetes.io/hostname
+            weight: 2
+      containers:
+      - args:
+        - edit
+        env:
+        - name: LOG_FORMAT
+          value: json
+        - name: SHIP_IMAGE
+          value: replicated/ship
+        - name: SHIP_TAG
+          value: 0.49.0
+        - name: SHIP_PULL_POLICY
+          value: IfNotPresent
+        - name: LOG_LEVEL
+          value: warn
+        - name: S3_ENDPOINT
+          value: |
+            http://minio.default.svc.cluster.local:9000/
+        - name: S3_BUCKET_NAME
+          value: |
+            ship-enterprise
+        - name: S3_ACCESS_KEY_ID
+          value: |
+            802pz7NqIgkRlgLQeH_j9uw2mEEunfR3
+        - name: S3_SECRET_ACCESS_KEY
+          value: |
+            QZenAMIBNZTkwMo0CY0A_Z8dYGfLlM5Q
+        - name: S3_BUCKET_ENDPOINT
+          value: |
+            true
+        - name: POSTGRES_URI
+          valueFrom:
+            secretKeyRef:
+              key: uri
+              name: ship-enterprise-postgres
+        - name: GITHUB_PRIVATE_KEY
+          valueFrom:
+            secretKeyRef:
+              key: private-key.pem
+              name: github-app-private-key
+        - name: GITHUB_INTEGRATION_ID
+          value: ""
+        image: registry.replicated.com/ship-enterprise/ship-cluster-worker:b9c0c0d
+        imagePullPolicy: IfNotPresent
+        name: ship-cluster-worker
+        ports:
+        - containerPort: 3000
+          name: edit-server
+        readinessProbe:
+          httpGet:
+            path: /healthz
+            port: 3000
+          initialDelaySeconds: 2
+          periodSeconds: 2
+      imagePullSecrets:
+      - name: replicatedregistrykey
+      restartPolicy: Always
+      serviceAccountName: ship-cluster-worker-edit
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ship-cluster-worker-image
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ship-cluster-worker-image
+  template:
+    metadata:
+      labels:
+        app: ship-cluster-worker-image
+    spec:
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app
+                  operator: In
+                  values:
+                  - ship-cluster-worker-image
+              topologyKey: kubernetes.io/hostname
+            weight: 2
+      containers:
+      - args:
+        - image
+        env:
+        - name: LOG_LEVEL
+          value: warn
+        - name: POSTGRES_URI
+          valueFrom:
+            secretKeyRef:
+              key: uri
+              name: ship-enterprise-postgres
+        - name: LOG_FORMAT
+          value: json
+        image: registry.replicated.com/ship-enterprise/ship-cluster-worker:b9c0c0d
+        imagePullPolicy: IfNotPresent
+        name: ship-cluster-worker
+        resources:
+          limits:
+            memory: 512Mi
+          requests:
+            memory: 256Mi
+      imagePullSecrets:
+      - name: replicatedregistrykey
+      restartPolicy: Always
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ship-cluster-worker-init
+spec:
+  selector:
+    matchLabels:
+      app: ship-cluster-worker-init
+  template:
+    metadata:
+      labels:
+        app: ship-cluster-worker-init
+    spec:
+      affinity:
+        podAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app
+                  operator: In
+                  values:
+                  - ship-cluster-worker-init
+              topologyKey: kubernetes.io/hostname
+            weight: 1
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app
+                  operator: In
+                  values:
+                  - ship-cluster-worker-init
+              topologyKey: kubernetes.io/hostname
+            weight: 2
+      containers:
+      - args:
+        - init
+        env:
+        - name: LOG_FORMAT
+          value: json
+        - name: SHIP_IMAGE
+          value: replicated/ship
+        - name: SHIP_TAG
+          value: 0.49.0
+        - name: SHIP_PULL_POLICY
+          value: IfNotPresent
+        - name: LOG_LEVEL
+          value: warn
+        - name: S3_ENDPOINT
+          value: |
+            http://minio.default.svc.cluster.local:9000/
+        - name: S3_BUCKET_NAME
+          value: |
+            ship-enterprise
+        - name: S3_ACCESS_KEY_ID
+          value: |
+            802pz7NqIgkRlgLQeH_j9uw2mEEunfR3
+        - name: S3_SECRET_ACCESS_KEY
+          value: |
+            QZenAMIBNZTkwMo0CY0A_Z8dYGfLlM5Q
+        - name: S3_BUCKET_ENDPOINT
+          value: |
+            true
+        - name: POSTGRES_URI
+          valueFrom:
+            secretKeyRef:
+              key: uri
+              name: ship-enterprise-postgres
+        - name: GITHUB_PRIVATE_KEY
+          valueFrom:
+            secretKeyRef:
+              key: private-key.pem
+              name: github-app-private-key
+        - name: GITHUB_INTEGRATION_ID
+          value: ""
+        image: registry.replicated.com/ship-enterprise/ship-cluster-worker:b9c0c0d
+        imagePullPolicy: IfNotPresent
+        name: ship-cluster-worker
+        ports:
+        - containerPort: 3000
+          name: init-server
+        readinessProbe:
+          httpGet:
+            path: /healthz
+            port: 3000
+          initialDelaySeconds: 2
+          periodSeconds: 2
+      imagePullSecrets:
+      - name: replicatedregistrykey
+      restartPolicy: Always
+      serviceAccountName: ship-cluster-worker-init
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ship-cluster-worker-update
+spec:
+  selector:
+    matchLabels:
+      app: ship-cluster-worker-update
+  template:
+    metadata:
+      labels:
+        app: ship-cluster-worker-update
+    spec:
+      affinity:
+        podAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app
+                  operator: In
+                  values:
+                  - ship-cluster-worker-update
+              topologyKey: kubernetes.io/hostname
+            weight: 1
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app
+                  operator: In
+                  values:
+                  - ship-cluster-worker-update
+              topologyKey: kubernetes.io/hostname
+            weight: 2
+      containers:
+      - args:
+        - update
+        env:
+        - name: LOG_FORMAT
+          value: json
+        - name: SHIP_IMAGE
+          value: replicated/ship
+        - name: SHIP_TAG
+          value: 0.49.0
+        - name: SHIP_PULL_POLICY
+          value: IfNotPresent
+        - name: LOG_LEVEL
+          value: warn
+        - name: S3_ENDPOINT
+          value: |
+            http://minio.default.svc.cluster.local:9000/
+        - name: S3_BUCKET_NAME
+          value: |
+            ship-enterprise
+        - name: S3_ACCESS_KEY_ID
+          value: |
+            802pz7NqIgkRlgLQeH_j9uw2mEEunfR3
+        - name: S3_SECRET_ACCESS_KEY
+          value: |
+            QZenAMIBNZTkwMo0CY0A_Z8dYGfLlM5Q
+        - name: S3_BUCKET_ENDPOINT
+          value: |
+            true
+        - name: POSTGRES_URI
+          valueFrom:
+            secretKeyRef:
+              key: uri
+              name: ship-enterprise-postgres
+        - name: GITHUB_PRIVATE_KEY
+          valueFrom:
+            secretKeyRef:
+              key: private-key.pem
+              name: github-app-private-key
+        - name: GITHUB_INTEGRATION_ID
+          value: ""
+        image: registry.replicated.com/ship-enterprise/ship-cluster-worker:b9c0c0d
+        imagePullPolicy: IfNotPresent
+        name: ship-cluster-worker
+        ports:
+        - containerPort: 3000
+          name: update-server
+        readinessProbe:
+          httpGet:
+            path: /healthz
+            port: 3000
+          initialDelaySeconds: 2
+          periodSeconds: 2
+      imagePullSecrets:
+      - name: replicatedregistrykey
+      restartPolicy: Always
+      serviceAccountName: ship-cluster-worker-update
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ship-cluster-worker-watch
+spec:
+  selector:
+    matchLabels:
+      app: ship-cluster-worker-watch
+  template:
+    metadata:
+      labels:
+        app: ship-cluster-worker-watch
+    spec:
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app
+                  operator: In
+                  values:
+                  - ship-cluster-worker-watch
+              topologyKey: kubernetes.io/hostname
+            weight: 2
+      containers:
+      - args:
+        - watch
+        env:
+        - name: SHIP_IMAGE
+          value: replicated/ship
+        - name: SHIP_TAG
+          value: 0.49.0
+        - name: SHIP_PULL_POLICY
+          value: IfNotPresent
+        - name: LOG_LEVEL
+          value: warn
+        - name: S3_ENDPOINT
+          value: |
+            http://minio.default.svc.cluster.local:9000/
+        - name: S3_BUCKET_NAME
+          value: |
+            ship-enterprise
+        - name: S3_ACCESS_KEY_ID
+          value: |
+            802pz7NqIgkRlgLQeH_j9uw2mEEunfR3
+        - name: S3_SECRET_ACCESS_KEY
+          value: |
+            QZenAMIBNZTkwMo0CY0A_Z8dYGfLlM5Q
+        - name: POSTGRES_URI
+          valueFrom:
+            secretKeyRef:
+              key: uri
+              name: ship-enterprise-postgres
+        - name: GITHUB_PRIVATE_KEY
+          valueFrom:
+            secretKeyRef:
+              key: private-key.pem
+              name: github-app-private-key
+        - name: GITHUB_INTEGRATION_ID
+          value: ""
+        - name: LOG_FORMAT
+          value: json
+        image: registry.replicated.com/ship-enterprise/ship-cluster-worker:b9c0c0d
+        imagePullPolicy: IfNotPresent
+        name: ship-cluster-worker
+        ports:
+        - containerPort: 3000
+          name: watch-server
+        readinessProbe:
+          httpGet:
+            path: /healthz
+            port: 3000
+          initialDelaySeconds: 2
+          periodSeconds: 2
+        resources:
+          limits:
+            memory: 512Mi
+          requests:
+            memory: 256Mi
+      imagePullSecrets:
+      - name: replicatedregistrykey
+      restartPolicy: Always
+      serviceAccountName: ship-cluster-worker-watch
+---
+apiVersion: apps/v1beta2
+kind: Deployment
+metadata:
+  labels:
+    app: minio
+    release: minio
+  name: minio
+spec:
+  selector:
+    matchLabels:
+      app: minio
+      release: minio
+  strategy:
+    rollingUpdate:
+      maxSurge: 100%
+      maxUnavailable: 0
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: minio
+        release: minio
+      name: minio
+    spec:
+      containers:
+      - command:
+        - /bin/sh
+        - -ce
+        - /usr/bin/docker-entrypoint.sh minio -C /root/.minio/ server /export
+        env:
+        - name: MINIO_ACCESS_KEY
+          valueFrom:
+            secretKeyRef:
+              key: accesskey
+              name: s3-secret
+        - name: MINIO_SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              key: secretkey
+              name: s3-secret
+        - name: MINIO_BROWSER
+          value: true
+        image: minio/minio:RELEASE.2019-07-17T22-54-12Z
+        imagePullPolicy: IfNotPresent
+        livenessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /minio/health/live
+            port: service
+            scheme: HTTP
+          initialDelaySeconds: 5
+          periodSeconds: 30
+          successThreshold: 1
+          timeoutSeconds: 1
+        name: minio
+        ports:
+        - containerPort: 9000
+          name: service
+        readinessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /minio/health/ready
+            port: service
+          initialDelaySeconds: 5
+          periodSeconds: 15
+          successThreshold: 1
+          timeoutSeconds: 1
+        resources:
+          requests:
+            cpu: 250m
+            memory: 256Mi
+        volumeMounts:
+        - mountPath: /export
+          name: export
+        - mountPath: /root/.minio/
+          name: minio-config-dir
+      serviceAccountName: minio
+      volumes:
+      - name: export
+        persistentVolumeClaim:
+          claimName: minio
+      - name: minio-user
+        secret:
+          secretName: s3-secret
+      - emptyDir: {}
+        name: minio-config-dir
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  labels:
+    app: contour
+  name: contour
+  namespace: heptio-contour
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: contour
+  template:
+    metadata:
+      annotations:
+        prometheus.io/format: prometheus
+        prometheus.io/path: /stats
+        prometheus.io/port: "8002"
+        prometheus.io/scrape: "true"
+      labels:
+        app: contour
+    spec:
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - podAffinityTerm:
+              labelSelector:
+                matchLabels:
+                  app: contour
+              topologyKey: kubernetes.io/hostname
+            weight: 100
+      containers:
+      - args:
+        - serve
+        - --incluster
+        command:
+        - contour
+        image: gcr.io/heptio-images/contour:master
+        imagePullPolicy: Always
+        name: contour
+      - args:
+        - --config-path /config/contour.json
+        - --service-cluster cluster0
+        - --service-node node0
+        - --log-level info
+        command:
+        - envoy
+        image: docker.io/envoyproxy/envoy:v1.9.1
+        lifecycle:
+          preStop:
+            exec:
+              command:
+              - wget
+              - -qO-
+              - http://localhost:9001/healthcheck/fail
+        name: envoy
+        ports:
+        - containerPort: 8080
+          name: http
+        - containerPort: 8443
+          name: https
+        readinessProbe:
+          httpGet:
+            path: /healthz
+            port: 8002
+          initialDelaySeconds: 3
+          periodSeconds: 3
+        volumeMounts:
+        - mountPath: /config
+          name: contour-config
+      dnsPolicy: ClusterFirst
+      initContainers:
+      - args:
+        - bootstrap
+        - /config/contour.json
+        command:
+        - contour
+        image: gcr.io/heptio-images/contour:master
+        imagePullPolicy: Always
+        name: envoy-initconfig
+        volumeMounts:
+        - mountPath: /config
+          name: contour-config
+      serviceAccountName: contour
+      terminationGracePeriodSeconds: 30
+      volumes:
+      - emptyDir: {}
+        name: contour-config
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  labels:
+    control-plane: controller-manager
+    controller-tools.k8s.io: "1.0"
+  name: schemahero-controller-manager
+  namespace: schemahero-system
+spec:
+  selector:
+    matchLabels:
+      control-plane: controller-manager
+      controller-tools.k8s.io: "1.0"
+  serviceName: schemahero-controller-manager-service
+  template:
+    metadata:
+      labels:
+        control-plane: controller-manager
+        controller-tools.k8s.io: "1.0"
+    spec:
+      containers:
+      - args:
+        - --secure-listen-address=0.0.0.0:8443
+        - --upstream=http://127.0.0.1:8088/
+        - --logtostderr=true
+        - --v=10
+        image: gcr.io/kubebuilder/kube-rbac-proxy:v0.4.0
+        name: kube-rbac-proxy
+        ports:
+        - containerPort: 8443
+          name: https
+      - args:
+        - --metrics-addr=127.0.0.1:8088
+        command:
+        - /manager
+        env:
+        - name: POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        - name: SECRET_NAME
+          value: schemahero-webhook-server-secret
+        image: schemahero/schemahero-manager:alpha
+        imagePullPolicy: Always
+        name: manager
+        ports:
+        - containerPort: 9876
+          name: webhook-server
+          protocol: TCP
+        resources:
+          limits:
+            cpu: 100m
+            memory: 500Mi
+          requests:
+            cpu: 100m
+            memory: 200Mi
+        volumeMounts:
+        - mountPath: /tmp/cert
+          name: cert
+          readOnly: true
+      terminationGracePeriodSeconds: 10
+      volumes:
+      - name: cert
+        secret:
+          defaultMode: 420
+          secretName: schemahero-webhook-server-secret
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  labels:
+    control-plane: controller-manager
+    controller-tools.k8s.io: "1.0"
+  name: ship-operator-controller-manager
+  namespace: ship-operator-system
+spec:
+  selector:
+    matchLabels:
+      control-plane: controller-manager
+      controller-tools.k8s.io: "1.0"
+  serviceName: ship-operator-controller-manager-service
+  template:
+    metadata:
+      labels:
+        control-plane: controller-manager
+        controller-tools.k8s.io: "1.0"
+    spec:
+      containers:
+      - command:
+        - /root/ship-operator
+        - manager
+        image: registry.replicated.com/ship-enterprise/ship-operator:c83758d
+        name: manager
+        resources:
+          limits:
+            cpu: 100m
+            memory: 300Mi
+          requests:
+            cpu: 100m
+            memory: 20Mi
+      imagePullSecrets:
+      - name: replicatedregistrykey
+      terminationGracePeriodSeconds: 10
+---
+apiVersion: apps/v1beta2
+kind: StatefulSet
+metadata:
+  labels:
+    app: postgresql
+    release: ship-enterprise
+  name: ship-enterprise-postgresql
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgresql
+      release: ship-enterprise
+      role: master
+  serviceName: ship-enterprise-postgresql-headless
+  template:
+    metadata:
+      labels:
+        app: postgresql
+        chart: postgresql-3.18.1
+        heritage: Tiller
+        release: ship-enterprise
+        role: master
+      name: ship-enterprise-postgresql
+    spec:
+      containers:
+      - env:
+        - name: PGDATA
+          value: /bitnami/postgresql
+        - name: POSTGRES_USER
+          value: ship-enterprise
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: postgresql-password
+              name: postgresql-secret
+        - name: POSTGRES_DB
+          value: ship-enterprise
+        image: docker.io/bitnami/postgresql:10.7.0
+        imagePullPolicy: Always
+        livenessProbe:
+          exec:
+            command:
+            - sh
+            - -c
+            - exec pg_isready -U "ship-enterprise" -d "ship-enterprise" -h 127.0.0.1
+          failureThreshold: 6
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 5
+        name: ship-enterprise-postgresql
+        ports:
+        - containerPort: 5432
+          name: postgresql
+        readinessProbe:
+          exec:
+            command:
+            - sh
+            - -c
+            - exec pg_isready -U "ship-enterprise" -d "ship-enterprise" -h 127.0.0.1
+          failureThreshold: 6
+          initialDelaySeconds: 5
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 5
+        resources:
+          requests:
+            cpu: 500m
+            memory: 1024Mi
+        securityContext:
+          runAsUser: 1001
+        volumeMounts:
+        - mountPath: /bitnami/postgresql
+          name: data
+          subPath: null
+      initContainers:
+      - command:
+        - sh
+        - -c
+        - |
+          chown -R 1001:1001 /bitnami
+          if [ -d /bitnami/postgresql/data ]; then
+            chmod  0700 /bitnami/postgresql/data;
+          fi
+        image: docker.io/bitnami/minideb:latest
+        imagePullPolicy: Always
+        name: init-chmod-data
+        resources:
+          requests:
+            cpu: 500m
+            memory: 1024Mi
+        securityContext:
+          runAsUser: 0
+        volumeMounts:
+        - mountPath: /bitnami/postgresql
+          name: data
+          subPath: null
+      securityContext:
+        fsGroup: 1001
+      volumes: []
+  updateStrategy:
+    type: RollingUpdate
+  volumeClaimTemplates:
+  - metadata:
+      name: data
+    spec:
+      accessModes:
+      - ReadWriteOnce
+      resources:
+        requests:
+          storage: 40Gi
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  annotations:
+    helm.sh/hook: post-install,post-upgrade
+    helm.sh/hook-delete-policy: hook-succeeded
+  labels:
+    app: minio
+    release: minio
+  name: minio-make-bucket-job
+spec:
+  template:
+    metadata:
+      labels:
+        app: minio
+        release: minio
+    spec:
+      containers:
+      - command:
+        - /bin/sh
+        - /config/initialize
+        env:
+        - name: MINIO_ENDPOINT
+          value: minio
+        - name: MINIO_PORT
+          value: "9000"
+        image: minio/mc:RELEASE.2019-07-17T22-13-42Z
+        imagePullPolicy: IfNotPresent
+        name: minio-mc
+        volumeMounts:
+        - mountPath: /config
+          name: minio-configuration
+      restartPolicy: OnFailure
+      volumes:
+      - name: minio-configuration
+        projected:
+          sources:
+          - configMap:
+              name: minio
+          - secret:
+              name: s3-secret
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: ship-cluster-local-cluster
+spec:
+  template:
+    spec:
+      containers:
+      - args:
+        - /src/shipcloudctl
+        - ensure-local-cluster
+        env:
+        - name: SHIP_API_ADVERTISE_ENDPOINT
+          value: https://test
+        - name: POSTGRES_URI
+          valueFrom:
+            secretKeyRef:
+              key: uri
+              name: ship-enterprise-postgres
+        - name: ENSURE_LOCAL_CLUSTER
+          value: ""
+        image: registry.replicated.com/ship-enterprise/ship-cluster-api:b9c0c0d
+        imagePullPolicy: IfNotPresent
+        name: ship-cluster-local-cluster
+      imagePullSecrets:
+      - name: replicatedregistrykey
+      restartPolicy: OnFailure
+---
+apiVersion: databases.schemahero.io/v1alpha2
+connection:
+  postgres:
+    uri:
+      valueFrom:
+        secretKeyRef:
+          key: uri
+          name: ship-enterprise-postgres
+kind: Database
+metadata:
+  name: ship-cluster-postgres
+---
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: ship-enterprise-ingress
+spec:
+  rules:
+  - http:
+      paths:
+      - backend:
+          serviceName: ship-cluster-ui
+          servicePort: 3000
+        path: /*
+      - backend:
+          serviceName: ship-cluster-api
+          servicePort: 3000
+        path: /api/*
+      - backend:
+          serviceName: ship-cluster-api
+          servicePort: 3000
+        path: /graphql
+  - host: test
+    http:
+      paths:
+      - backend:
+          serviceName: ship-cluster-ui
+          servicePort: 3000
+        path: /*
+      - backend:
+          serviceName: ship-cluster-api
+          servicePort: 3000
+        path: /api/*
+      - backend:
+          serviceName: ship-cluster-api
+          servicePort: 3000
+        path: /graphql
+  tls:
+  - hosts:
+    - test
+    secretName: ship-enterprise-tls
+---
+apiVersion: schemas.schemahero.io/v1alpha2
+kind: Table
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: cluster-github
+spec:
+  database: ship-cluster-postgres
+  name: cluster_github
+  requires: []
+  schema:
+    postgres:
+      columns:
+      - constraints:
+          notNull: true
+        name: cluster_id
+        type: text
+      - constraints:
+          notNull: true
+        name: owner
+        type: text
+      - constraints:
+          notNull: true
+        name: repo
+        type: text
+      - name: branch
+        type: text
+      - constraints:
+          notNull: true
+        name: installation_id
+        type: integer
+      primaryKey:
+      - cluster_id
+---
+apiVersion: schemas.schemahero.io/v1alpha2
+kind: Table
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: cluster
+spec:
+  database: ship-cluster-postgres
+  name: cluster
+  requires: []
+  schema:
+    postgres:
+      columns:
+      - constraints:
+          notNull: true
+        name: id
+        type: text
+      - constraints:
+          notNull: true
+        name: title
+        type: text
+      - constraints:
+          notNull: true
+        name: slug
+        type: text
+      - constraints:
+          notNull: true
+        name: created_at
+        type: timestamp without time zone
+      - name: updated_at
+        type: timestamp without time zone
+      - name: token
+        type: text
+      - constraints:
+          notNull: true
+        default: '''gitops''::text'
+        name: cluster_type
+        type: text
+      - constraints:
+          notNull: true
+        default: "false"
+        name: is_all_users
+        type: boolean
+      primaryKey:
+      - id
+---
+apiVersion: schemas.schemahero.io/v1alpha2
+kind: Table
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: email-notification
+spec:
+  database: ship-cluster-postgres
+  name: email_notification
+  requires: []
+  schema:
+    postgres:
+      columns:
+      - constraints:
+          notNull: true
+        name: notification_id
+        type: text
+      - constraints:
+          notNull: true
+        name: recipient
+        type: text
+      - constraints:
+          notNull: true
+        name: created_at
+        type: timestamp without time zone
+      primaryKey: []
+---
+apiVersion: schemas.schemahero.io/v1alpha2
+kind: Table
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: feature
+spec:
+  database: ship-cluster-postgres
+  name: feature
+  requires: []
+  schema:
+    postgres:
+      columns:
+      - constraints:
+          notNull: true
+        name: id
+        type: text
+      - name: created_at
+        type: timestamp without time zone
+      primaryKey:
+      - id
+---
+apiVersion: schemas.schemahero.io/v1alpha2
+kind: Table
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: github-nonce
+spec:
+  database: ship-cluster-postgres
+  name: github_nonce
+  requires: []
+  schema:
+    postgres:
+      columns:
+      - constraints:
+          notNull: true
+        name: nonce
+        type: text
+      - constraints:
+          notNull: true
+        name: expire_at
+        type: timestamp without time zone
+      primaryKey: []
+---
+apiVersion: schemas.schemahero.io/v1alpha2
+kind: Table
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: github-user
+spec:
+  database: ship-cluster-postgres
+  name: github_user
+  requires: []
+  schema:
+    postgres:
+      columns:
+      - constraints:
+          notNull: true
+        name: username
+        type: text
+      - constraints:
+          notNull: true
+        name: github_id
+        type: integer
+      - constraints:
+          notNull: false
+        name: avatar_url
+        type: character varying (255)
+      - name: email
+        type: text
+      - name: user_id
+        type: text
+      primaryKey:
+      - username
+---
+apiVersion: schemas.schemahero.io/v1alpha2
+kind: Table
+metadata:
+  name: helm-chart-source
+spec:
+  database: ship-cluster-postgres
+  name: helm_chart_source
+  requires: []
+  schema:
+    postgres:
+      columns:
+      - constraints:
+          notNull: true
+        name: helm_chart_id
+        type: text
+      - constraints:
+          notNull: true
+        name: source
+        type: text
+      primaryKey:
+      - helm_chart_id
+      - source
+---
+apiVersion: schemas.schemahero.io/v1alpha2
+kind: Table
+metadata:
+  name: helm-chart
+spec:
+  database: ship-cluster-postgres
+  name: helm_chart
+  requires: []
+  schema:
+    postgres:
+      columns:
+      - constraints:
+          notNull: true
+        name: id
+        type: text
+      - constraints:
+          notNull: true
+        name: cluster_id
+        type: text
+      - constraints:
+          notNull: true
+        name: helm_name
+        type: text
+      - constraints:
+          notNull: true
+        name: namespace
+        type: text
+      - name: version
+        type: int
+      - constraints:
+          notNull: true
+        name: first_deployed_at
+        type: timestamp without time zone
+      - constraints:
+          notNull: true
+        name: last_deployed_at
+        type: timestamp without time zone
+      - name: is_deleted
+        type: boolean
+      - constraints:
+          notNull: true
+        name: chart_version
+        type: text
+      - constraints:
+          notNull: true
+        name: app_version
+        type: text
+      primaryKey:
+      - id
+---
+apiVersion: schemas.schemahero.io/v1alpha2
+kind: Table
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: image-watch-batch
+spec:
+  database: ship-cluster-postgres
+  name: image_watch_batch
+  requires: []
+  schema:
+    postgres:
+      columns:
+      - constraints:
+          notNull: true
+        name: id
+        type: text
+      - name: user_id
+        type: text
+      - constraints:
+          notNull: true
+        name: images_input
+        type: text
+      - constraints:
+          notNull: true
+        name: created_at
+        type: timestamp without time zone
+      primaryKey:
+      - id
+---
+apiVersion: schemas.schemahero.io/v1alpha2
+kind: Table
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: image-watch
+spec:
+  database: ship-cluster-postgres
+  name: image_watch
+  requires: []
+  schema:
+    postgres:
+      columns:
+      - constraints:
+          notNull: true
+        name: id
+        type: text
+      - constraints:
+          notNull: true
+        name: batch_id
+        type: text
+      - constraints:
+          notNull: true
+        name: image_name
+        type: text
+      - name: checked_at
+        type: timestamp without time zone
+      - default: "false"
+        name: is_private
+        type: boolean
+      - default: "0"
+        name: versions_behind
+        type: integer
+      - name: detected_version
+        type: text
+      - name: latest_version
+        type: text
+      - name: compatible_version
+        type: text
+      - name: check_error
+        type: text
+      - name: docker_pullable
+        type: text
+      - name: path
+        type: text
+      - name: started_processing_at
+        type: timestamp without time zone
+      primaryKey:
+      - id
+---
+apiVersion: schemas.schemahero.io/v1alpha2
+kind: Table
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: object-store
+spec:
+  database: ship-cluster-postgres
+  name: object_store
+  requires: []
+  schema:
+    postgres:
+      columns:
+      - constraints:
+          notNull: true
+        name: filepath
+        type: text
+      - constraints:
+          notNull: true
+        name: encoded_block
+        type: text
+      primaryKey:
+      - filepath
+---
+apiVersion: schemas.schemahero.io/v1alpha2
+kind: Table
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: pending-pullrequest-notification
+spec:
+  database: ship-cluster-postgres
+  name: pending_pullrequest_notification
+  requires: []
+  schema:
+    postgres:
+      columns:
+      - constraints:
+          notNull: true
+        name: pullrequest_history_id
+        type: text
+      - constraints:
+          notNull: true
+        name: org
+        type: text
+      - constraints:
+          notNull: true
+        name: repo
+        type: text
+      - constraints:
+          notNull: true
+        name: branch
+        type: text
+      - name: root_path
+        type: text
+      - constraints:
+          notNull: true
+        name: created_at
+        type: timestamp without time zone
+      - constraints:
+          notNull: true
+        name: github_installation_id
+        type: integer
+      - default: '''-1''::integer'
+        name: pullrequest_number
+        type: integer
+      - name: watch_id
+        type: text
+      primaryKey: []
+---
+apiVersion: schemas.schemahero.io/v1alpha2
+kind: Table
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: pullrequest-history
+spec:
+  database: ship-cluster-postgres
+  name: pullrequest_history
+  requires: []
+  schema:
+    postgres:
+      columns:
+      - constraints:
+          notNull: true
+        name: notification_id
+        type: text
+      - constraints:
+          notNull: true
+        name: pullrequest_number
+        type: integer
+      - constraints:
+          notNull: true
+        name: version_label
+        type: text
+      - constraints:
+          notNull: true
+        name: org
+        type: text
+      - constraints:
+          notNull: true
+        name: repo
+        type: text
+      - name: branch
+        type: text
+      - name: root_path
+        type: text
+      - constraints:
+          notNull: true
+        name: created_at
+        type: timestamp without time zone
+      - constraints:
+          notNull: true
+        default: '''unknown''::text'
+        name: github_status
+        type: text
+      - default: "0"
+        name: sequence
+        type: integer
+      - default: '''''::text'
+        name: source_branch
+        type: text
+      primaryKey: []
+---
+apiVersion: schemas.schemahero.io/v1alpha2
+kind: Table
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: pullrequest-notification
+spec:
+  database: ship-cluster-postgres
+  name: pullrequest_notification
+  requires: []
+  schema:
+    postgres:
+      columns:
+      - constraints:
+          notNull: true
+        name: notification_id
+        type: text
+      - constraints:
+          notNull: true
+        name: org
+        type: text
+      - constraints:
+          notNull: true
+        name: repo
+        type: text
+      - name: branch
+        type: text
+      - name: root_path
+        type: text
+      - constraints:
+          notNull: true
+        name: created_at
+        type: timestamp without time zone
+      - constraints:
+          notNull: true
+        name: github_installation_id
+        type: integer
+      primaryKey: []
+---
+apiVersion: schemas.schemahero.io/v1alpha2
+kind: Table
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: session
+spec:
+  database: ship-cluster-postgres
+  name: session
+  requires: []
+  schema:
+    postgres:
+      columns:
+      - constraints:
+          notNull: true
+        name: id
+        type: text
+      - constraints:
+          notNull: true
+        name: user_id
+        type: text
+      - constraints:
+          notNull: true
+        name: metadata
+        type: text
+      - constraints:
+          notNull: true
+        name: expire_at
+        type: timestamp without time zone
+      primaryKey:
+      - id
+---
+apiVersion: schemas.schemahero.io/v1alpha2
+kind: Table
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: ship-edit
+spec:
+  database: ship-cluster-postgres
+  name: ship_edit
+  requires: []
+  schema:
+    postgres:
+      columns:
+      - constraints:
+          notNull: true
+        name: id
+        type: text
+      - constraints:
+          notNull: true
+        name: watch_id
+        type: text
+      - constraints:
+          notNull: true
+        name: user_id
+        type: text
+      - name: result
+        type: text
+      - constraints:
+          notNull: true
+        name: created_at
+        type: timestamp without time zone
+      - name: finished_at
+        type: timestamp without time zone
+      - name: is_headless
+        type: boolean
+      primaryKey:
+      - id
+---
+apiVersion: schemas.schemahero.io/v1alpha2
+kind: Table
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: ship-init-pending-user
+spec:
+  database: ship-cluster-postgres
+  name: ship_init_pending_user
+  requires: []
+  schema:
+    postgres:
+      columns:
+      - constraints:
+          notNull: true
+        name: user_id
+        type: text
+      - constraints:
+          notNull: true
+        name: ship_init_pending_id
+        type: text
+      primaryKey: []
+---
+apiVersion: schemas.schemahero.io/v1alpha2
+kind: Table
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: ship-init-pending
+spec:
+  database: ship-cluster-postgres
+  name: ship_init_pending
+  requires: []
+  schema:
+    postgres:
+      columns:
+      - constraints:
+          notNull: true
+        name: id
+        type: text
+      - constraints:
+          notNull: true
+        name: upstream_uri
+        type: text
+      - constraints:
+          notNull: true
+        name: requested_upstream_uri
+        type: text
+      - constraints:
+          notNull: true
+        name: title
+        type: text
+      - constraints:
+          notNull: true
+        name: created_at
+        type: timestamp without time zone
+      - name: finished_at
+        type: timestamp without time zone
+      - name: result
+        type: text
+      primaryKey:
+      - id
+---
+apiVersion: schemas.schemahero.io/v1alpha2
+kind: Table
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: ship-init
+spec:
+  database: ship-cluster-postgres
+  name: ship_init
+  requires: []
+  schema:
+    postgres:
+      columns:
+      - constraints:
+          notNull: true
+        name: id
+        type: text
+      - constraints:
+          notNull: true
+        name: upstream_uri
+        type: text
+      - constraints:
+          notNull: true
+        name: created_at
+        type: timestamp without time zone
+      - name: finished_at
+        type: timestamp without time zone
+      - name: result
+        type: text
+      - constraints:
+          notNull: true
+        name: user_id
+        type: text
+      - name: cluster_id
+        type: text
+      - name: github_path
+        type: text
+      - name: requested_upstream_uri
+        type: text
+      - name: parent_watch_id
+        type: text
+      - name: parent_sequence
+        type: integer
+      primaryKey:
+      - id
+---
+apiVersion: schemas.schemahero.io/v1alpha2
+kind: Table
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: ship-notification
+spec:
+  database: ship-cluster-postgres
+  name: ship_notification
+  requires: []
+  schema:
+    postgres:
+      columns:
+      - constraints:
+          notNull: true
+        name: id
+        type: text
+      - constraints:
+          notNull: true
+        name: watch_id
+        type: text
+      - constraints:
+          notNull: true
+        name: created_at
+        type: timestamp without time zone
+      - name: updated_at
+        type: timestamp without time zone
+      - name: triggered_at
+        type: timestamp without time zone
+      - name: enabled
+        type: smallint
+      primaryKey:
+      - id
+---
+apiVersion: schemas.schemahero.io/v1alpha2
+kind: Table
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: ship-output-files
+spec:
+  database: ship-cluster-postgres
+  name: ship_output_files
+  requires: []
+  schema:
+    postgres:
+      columns:
+      - constraints:
+          notNull: true
+        name: watch_id
+        type: text
+      - constraints:
+          notNull: true
+        name: created_at
+        type: timestamp without time zone
+      - constraints:
+          notNull: true
+        default: "0"
+        name: sequence
+        type: integer
+      - constraints:
+          notNull: true
+        name: filepath
+        type: text
+      primaryKey:
+      - watch_id
+      - sequence
+---
+apiVersion: schemas.schemahero.io/v1alpha2
+kind: Table
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: ship-unfork
+spec:
+  database: ship-cluster-postgres
+  name: ship_unfork
+  requires: []
+  schema:
+    postgres:
+      columns:
+      - constraints:
+          notNull: true
+        name: id
+        type: text
+      - constraints:
+          notNull: true
+        name: upstream_uri
+        type: text
+      - constraints:
+          notNull: true
+        name: fork_uri
+        type: text
+      - constraints:
+          notNull: true
+        name: created_at
+        type: timestamp without time zone
+      - name: finished_at
+        type: timestamp without time zone
+      - name: result
+        type: text
+      - constraints:
+          notNull: true
+        name: user_id
+        type: text
+      primaryKey:
+      - id
+---
+apiVersion: schemas.schemahero.io/v1alpha2
+kind: Table
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: ship-update
+spec:
+  database: ship-cluster-postgres
+  name: ship_update
+  requires: []
+  schema:
+    postgres:
+      columns:
+      - constraints:
+          notNull: true
+        name: id
+        type: text
+      - constraints:
+          notNull: true
+        name: watch_id
+        type: text
+      - name: user_id
+        type: text
+      - name: result
+        type: text
+      - constraints:
+          notNull: true
+        name: created_at
+        type: timestamp without time zone
+      - name: started_at
+        type: timestamp without time zone
+      - name: finished_at
+        type: timestamp without time zone
+      - name: parent_sequence
+        type: integer
+      - name: ship_logs
+        type: text
+      primaryKey:
+      - id
+---
+apiVersion: schemas.schemahero.io/v1alpha2
+kind: Table
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: ship-user-local
+spec:
+  database: ship-cluster-postgres
+  name: ship_user_local
+  requires: []
+  schema:
+    postgres:
+      columns:
+      - constraints:
+          notNull: true
+        name: user_id
+        type: text
+      - constraints:
+          notNull: true
+        name: password_bcrypt
+        type: text
+      - name: first_name
+        type: text
+      - name: last_name
+        type: text
+      - constraints:
+          notNull: true
+        name: email
+        type: text
+      primaryKey:
+      - user_id
+---
+apiVersion: schemas.schemahero.io/v1alpha2
+kind: Table
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: ship-user
+spec:
+  database: ship-cluster-postgres
+  name: ship_user
+  requires: []
+  schema:
+    postgres:
+      columns:
+      - constraints:
+          notNull: true
+        name: id
+        type: text
+      - name: created_at
+        type: timestamp without time zone
+      - name: github_id
+        type: integer
+      - name: last_login
+        type: timestamp without time zone
+      primaryKey:
+      - id
+---
+apiVersion: schemas.schemahero.io/v1alpha2
+kind: Table
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: supportbundle-analysis
+spec:
+  database: ship-cluster-postgres
+  name: supportbundle_analysis
+  requires: []
+  schema:
+    postgres:
+      columns:
+      - constraints:
+          notNull: true
+        name: id
+        type: text
+      - constraints:
+          notNull: true
+        name: supportbundle_id
+        type: text
+      - name: error
+        type: text
+      - name: max_severity
+        type: text
+      - name: insights
+        type: text
+      - constraints:
+          notNull: true
+        name: created_at
+        type: timestamp without time zone
+      primaryKey:
+      - id
+---
+apiVersion: schemas.schemahero.io/v1alpha2
+kind: Table
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: supportbundle
+spec:
+  database: ship-cluster-postgres
+  name: supportbundle
+  requires: []
+  schema:
+    postgres:
+      columns:
+      - constraints:
+          notNull: true
+        name: id
+        type: text
+      - constraints:
+          notNull: true
+        name: slug
+        type: text
+      - constraints:
+          notNull: true
+        name: watch_id
+        type: text
+      - name: name
+        type: text
+      - name: size
+        type: integer
+      - constraints:
+          notNull: true
+        name: status
+        type: text
+      - name: tree_index
+        type: text
+      - name: analysis_id
+        type: text
+      - constraints:
+          notNull: true
+        name: created_at
+        type: timestamp without time zone
+      - name: uploaded_at
+        type: timestamp without time zone
+      - name: is_archived
+        type: boolean
+      primaryKey:
+      - id
+---
+apiVersion: schemas.schemahero.io/v1alpha2
+kind: Table
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: track-scm-leads
+spec:
+  database: ship-cluster-postgres
+  name: track_scm_leads
+  requires: []
+  schema:
+    postgres:
+      columns:
+      - constraints:
+          notNull: true
+        name: id
+        type: text
+      - constraints:
+          notNull: true
+        name: deployment_type
+        type: text
+      - constraints:
+          notNull: true
+        name: email_address
+        type: text
+      - constraints:
+          notNull: true
+        name: scm_provider
+        type: text
+      - constraints:
+          notNull: true
+        name: created_at
+        type: timestamp without time zone
+      - constraints:
+          notNull: true
+        default: "false"
+        name: followed_up
+        type: boolean
+      primaryKey:
+      - id
+---
+apiVersion: schemas.schemahero.io/v1alpha2
+kind: Table
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: user-cluster
+spec:
+  database: ship-cluster-postgres
+  name: user_cluster
+  requires: []
+  schema:
+    postgres:
+      columns:
+      - constraints:
+          notNull: true
+        name: user_id
+        type: text
+      - constraints:
+          notNull: true
+        name: cluster_id
+        type: text
+      primaryKey: []
+---
+apiVersion: schemas.schemahero.io/v1alpha2
+kind: Table
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: user-feature
+spec:
+  database: ship-cluster-postgres
+  name: user_feature
+  requires: []
+  schema:
+    postgres:
+      columns:
+      - constraints:
+          notNull: true
+        name: user_id
+        type: text
+      - constraints:
+          notNull: true
+        name: feature_id
+        type: text
+      primaryKey:
+      - user_id
+      - feature_id
+---
+apiVersion: schemas.schemahero.io/v1alpha2
+kind: Table
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: user-watch
+spec:
+  database: ship-cluster-postgres
+  name: user_watch
+  requires: []
+  schema:
+    postgres:
+      columns:
+      - constraints:
+          notNull: true
+        name: user_id
+        type: text
+      - constraints:
+          notNull: true
+        name: watch_id
+        type: text
+      primaryKey:
+      - user_id
+      - watch_id
+---
+apiVersion: schemas.schemahero.io/v1alpha2
+kind: Table
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: watch-cluster
+spec:
+  database: ship-cluster-postgres
+  name: watch_cluster
+  requires: []
+  schema:
+    postgres:
+      columns:
+      - constraints:
+          notNull: true
+        name: watch_id
+        type: text
+      - constraints:
+          notNull: true
+        name: cluster_id
+        type: text
+      - name: github_path
+        type: text
+      primaryKey: []
+---
+apiVersion: schemas.schemahero.io/v1alpha2
+kind: Table
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: watch-downstream-token
+spec:
+  database: ship-cluster-postgres
+  name: watch_downstream_token
+  requires: []
+  schema:
+    postgres:
+      columns:
+      - constraints:
+          notNull: true
+        name: token
+        type: text
+      - constraints:
+          notNull: true
+        name: watch_id
+        type: text
+      primaryKey:
+      - token
+---
+apiVersion: schemas.schemahero.io/v1alpha2
+kind: Table
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: watch-feature
+spec:
+  database: ship-cluster-postgres
+  name: watch_feature
+  requires: []
+  schema:
+    postgres:
+      columns:
+      - constraints:
+          notNull: true
+        name: watch_id
+        type: text
+      - constraints:
+          notNull: true
+        name: feature_id
+        type: text
+      primaryKey:
+      - watch_id
+      - feature_id
+---
+apiVersion: schemas.schemahero.io/v1alpha2
+kind: Table
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: watch-toubleshoot-analyzer
+spec:
+  database: ship-cluster-postgres
+  name: watch_troubleshoot_analyzer
+  requires: []
+  schema:
+    postgres:
+      columns:
+      - constraints:
+          notNull: true
+        name: watch_id
+        type: text
+      - name: release_analyzer
+        type: text
+      - name: release_analyzer_updated_at
+        type: timestamp without time zone
+      - name: updated_analyzer
+        type: text
+      - name: updated_analyzer_updated_at
+        type: timestamp without time zone
+      - name: use_updated_analyzer
+        type: boolean
+      primaryKey:
+      - watch_id
+---
+apiVersion: schemas.schemahero.io/v1alpha2
+kind: Table
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: watch-toubleshoot-collector
+spec:
+  database: ship-cluster-postgres
+  name: watch_troubleshoot_collector
+  requires: []
+  schema:
+    postgres:
+      columns:
+      - constraints:
+          notNull: true
+        name: watch_id
+        type: text
+      - name: release_collector
+        type: text
+      - name: release_collector_updated_at
+        type: timestamp without time zone
+      - name: updated_collector
+        type: text
+      - name: updated_collector_updated_at
+        type: timestamp without time zone
+      - name: use_updated_collector
+        type: boolean
+      primaryKey:
+      - watch_id
+---
+apiVersion: schemas.schemahero.io/v1alpha2
+kind: Table
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: watch-version
+spec:
+  database: ship-cluster-postgres
+  name: watch_version
+  requires: []
+  schema:
+    postgres:
+      columns:
+      - constraints:
+          notNull: true
+        name: watch_id
+        type: text
+      - name: created_at
+        type: timestamp without time zone
+      - constraints:
+          notNull: true
+        name: version_label
+        type: text
+      - constraints:
+          notNull: true
+        default: '''unknown''::text'
+        name: status
+        type: text
+      - name: source_branch
+        type: text
+      - default: "0"
+        name: sequence
+        type: integer
+      - name: pullrequest_number
+        type: integer
+      - name: parent_sequence
+        type: integer
+      - name: deployed_at
+        type: timestamp without time zone
+      primaryKey: []
+---
+apiVersion: schemas.schemahero.io/v1alpha2
+kind: Table
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: watch
+spec:
+  database: ship-cluster-postgres
+  name: watch
+  requires: []
+  schema:
+    postgres:
+      columns:
+      - constraints:
+          notNull: true
+        name: id
+        type: text
+      - name: current_state
+        type: text
+      - constraints:
+          notNull: true
+        name: title
+        type: text
+      - name: icon_uri
+        type: text
+      - constraints:
+          notNull: true
+        name: created_at
+        type: timestamp without time zone
+      - name: updated_at
+        type: timestamp without time zone
+      - constraints:
+          notNull: true
+        name: slug
+        type: text
+      - name: parent_watch_id
+        type: text
+      - name: current_sequence
+        type: integer
+      - name: metadata
+        type: text
+      - name: last_watch_check_at
+        type: timestamp without time zone
+      - default: "false"
+        name: is_update_required
+        type: boolean
+      primaryKey:
+      - id
+---
+apiVersion: schemas.schemahero.io/v1alpha2
+kind: Table
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: webhook-notification
+spec:
+  database: ship-cluster-postgres
+  name: webhook_notification
+  requires: []
+  schema:
+    postgres:
+      columns:
+      - constraints:
+          notNull: true
+        name: notification_id
+        type: text
+      - constraints:
+          notNull: true
+        name: destination_uri
+        type: text
+      - constraints:
+          notNull: true
+        name: created_at
+        type: timestamp without time zone
+      primaryKey: []
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  labels:
+    app: minio
+    release: minio
+  name: minio
+spec:
+  accessModes:
+  - ReadWriteOnce
+  resources:
+    requests:
+      storage: 40Gi
