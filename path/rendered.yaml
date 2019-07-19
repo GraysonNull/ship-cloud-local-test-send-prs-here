@@ -1592,7 +1592,7 @@ spec:
           value: ship-cluster-api
         - name: GITHUB_PRIVATE_KEY_FILE
           value: /keys/github/private-key.pem
-        image: registry.replicated.com/ship-enterprise/ship-cluster-api:0b6de05
+        image: registry.replicated.com/ship-enterprise/ship-cluster-api:c1977b2
         imagePullPolicy: IfNotPresent
         name: ship-cluster-api
         ports:
@@ -1634,7 +1634,7 @@ spec:
       containers:
       - args:
         - /scripts/start-ship-cluster-ui.sh
-        image: registry.replicated.com/ship-enterprise/ship-cluster-ui:0b6de05
+        image: registry.replicated.com/ship-enterprise/ship-cluster-ui:c1977b2
         imagePullPolicy: IfNotPresent
         name: ship-cluster-ui
         ports:
@@ -1707,7 +1707,7 @@ spec:
           value: IfNotPresent
         - name: LOG_FORMAT
           value: json
-        image: registry.replicated.com/ship-enterprise/ship-cluster-worker:0b6de05
+        image: registry.replicated.com/ship-enterprise/ship-cluster-worker:c1977b2
         imagePullPolicy: IfNotPresent
         name: ship-cluster-worker
         ports:
@@ -1806,7 +1806,7 @@ spec:
               name: github-app-private-key
         - name: GITHUB_INTEGRATION_ID
           value: ""
-        image: registry.replicated.com/ship-enterprise/ship-cluster-worker:0b6de05
+        image: registry.replicated.com/ship-enterprise/ship-cluster-worker:c1977b2
         imagePullPolicy: IfNotPresent
         name: ship-cluster-worker
         ports:
@@ -1862,7 +1862,7 @@ spec:
               name: ship-enterprise-postgres
         - name: LOG_FORMAT
           value: json
-        image: registry.replicated.com/ship-enterprise/ship-cluster-worker:0b6de05
+        image: registry.replicated.com/ship-enterprise/ship-cluster-worker:c1977b2
         imagePullPolicy: IfNotPresent
         name: ship-cluster-worker
         resources:
@@ -1951,7 +1951,7 @@ spec:
               name: github-app-private-key
         - name: GITHUB_INTEGRATION_ID
           value: ""
-        image: registry.replicated.com/ship-enterprise/ship-cluster-worker:0b6de05
+        image: registry.replicated.com/ship-enterprise/ship-cluster-worker:c1977b2
         imagePullPolicy: IfNotPresent
         name: ship-cluster-worker
         ports:
@@ -2045,7 +2045,7 @@ spec:
               name: github-app-private-key
         - name: GITHUB_INTEGRATION_ID
           value: ""
-        image: registry.replicated.com/ship-enterprise/ship-cluster-worker:0b6de05
+        image: registry.replicated.com/ship-enterprise/ship-cluster-worker:c1977b2
         imagePullPolicy: IfNotPresent
         name: ship-cluster-worker
         ports:
@@ -2125,7 +2125,7 @@ spec:
           value: ""
         - name: LOG_FORMAT
           value: json
-        image: registry.replicated.com/ship-enterprise/ship-cluster-worker:0b6de05
+        image: registry.replicated.com/ship-enterprise/ship-cluster-worker:c1977b2
         imagePullPolicy: IfNotPresent
         name: ship-cluster-worker
         ports:
@@ -2603,7 +2603,7 @@ spec:
               name: ship-enterprise-postgres
         - name: ENSURE_LOCAL_CLUSTER
           value: ""
-        image: registry.replicated.com/ship-enterprise/ship-cluster-api:0b6de05
+        image: registry.replicated.com/ship-enterprise/ship-cluster-api:c1977b2
         imagePullPolicy: IfNotPresent
         name: ship-cluster-local-cluster
       imagePullSecrets:
@@ -3816,6 +3816,30 @@ spec:
       primaryKey:
       - watch_id
       - feature_id
+---
+apiVersion: schemas.schemahero.io/v1alpha2
+kind: Table
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: watch-license
+spec:
+  database: ship-cluster-postgres
+  name: watch_license
+  requires: []
+  schema:
+    postgres:
+      columns:
+      - constraints:
+          notNull: true
+        name: watch_id
+        type: text
+      - name: license
+        type: text
+      - name: license_updated_at
+        type: timestamp without time zone
+      primaryKey:
+      - watch_id
 ---
 apiVersion: schemas.schemahero.io/v1alpha2
 kind: Table
