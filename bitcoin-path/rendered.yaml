@@ -42,7 +42,7 @@ metadata:
     app: bitcoind
     release: bitcoind
   name: bitcoind
-  new: meta
+  test: example
 spec:
   selector:
     matchLabels:
