@@ -1,0 +1,20 @@
+apiVersion: troubleshoot.replicated.com/v1beta1
+kind: Redactor
+metadata:
+  name: my-demo-redactor
+spec:
+  redactors:
+  - name: replace literal string
+    values:
+    - redact-me-first
+  - name: regex mask
+    regex:
+    - (mask)(?P<mask>.*)(center)
+  - name: s3 endpoint
+    multiline:
+    - selector: 'S3_ENDPOINT'
+      redactor: '("value": ").*(")'
+  - name: yaml remove
+    file: literals/a-yaml-file
+    yaml:
+    - 'abc.xyz.*.a'
