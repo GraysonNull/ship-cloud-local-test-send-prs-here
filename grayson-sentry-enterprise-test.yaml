@@ -355,42 +355,41 @@ data:
         BITBUCKET_CONSUMER_SECRET = env('BITBUCKET_CONSUMER_SECRET')
 kind: ConfigMap
 metadata:
+  annotations:
+    kots.io/app-slug: grayson-sentry-enterprise-test
   labels:
     app: sentry
+    kots.io/app-slug: grayson-sentry-enterprise-test
+    kots.io/backup: velero
   name: sentry
 ---
 apiVersion: v1
 data:
-  .dockerconfigjson: eyJhdXRocyI6eyJ0dGwuc2giOnsiYXV0aCI6ImRHVnpkRHAwWlhOMCJ9fX0=
-kind: Secret
-metadata:
-  creationTimestamp: null
-  labels:
-    kots.io/kotsadm: "true"
-    velero.io/exclude-from-backup: "true"
-  name: kotsadm-replicated-registry
-  namespace: testing
-type: kubernetes.io/dockerconfigjson
----
-apiVersion: v1
-data:
-  sentry-secret: dFE4eUNTbXNHc00wVGJDaGZiZjE4Z3hEWXZqeTFWUDI5dU5hTm5BSg==
+  sentry-secret: ""
   smtp-password: ""
-  user-password: cGFzc3dvcmQ=
+  user-password: ""
 kind: Secret
 metadata:
+  annotations:
+    kots.io/app-slug: grayson-sentry-enterprise-test
   labels:
     app: sentry
+    kots.io/app-slug: grayson-sentry-enterprise-test
+    kots.io/backup: velero
   name: sentry
 type: Opaque
 ---
 apiVersion: v1
 data:
-  postgres-password: WXlMeldiRzY3WE5VYUxrQ1IwOGdzT0RHcGhHMnQzY2E=
+  postgres-password: ""
 kind: Secret
 metadata:
+  annotations:
+    kots.io/app-slug: grayson-sentry-enterprise-test
   labels:
     app: postgresql
+    kots.io/app-slug: grayson-sentry-enterprise-test
+    kots.io/backup: velero
   name: sentry-postgresql
 type: Opaque
 ---
@@ -399,16 +398,24 @@ data:
   redis-password: TmVDS3J6cWc4aw==
 kind: Secret
 metadata:
+  annotations:
+    kots.io/app-slug: grayson-sentry-enterprise-test
   labels:
     app: redis
+    kots.io/app-slug: grayson-sentry-enterprise-test
+    kots.io/backup: velero
   name: sentry-redis
 type: Opaque
 ---
 apiVersion: v1
 kind: Service
 metadata:
+  annotations:
+    kots.io/app-slug: grayson-sentry-enterprise-test
   labels:
     app: sentry
+    kots.io/app-slug: grayson-sentry-enterprise-test
+    kots.io/backup: velero
   name: sentry
 spec:
   ports:
@@ -424,8 +431,12 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
+  annotations:
+    kots.io/app-slug: grayson-sentry-enterprise-test
   labels:
     app: postgresql
+    kots.io/app-slug: grayson-sentry-enterprise-test
+    kots.io/backup: velero
   name: sentry-postgresql
 spec:
   ports:
@@ -439,8 +450,12 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
+  annotations:
+    kots.io/app-slug: grayson-sentry-enterprise-test
   labels:
     app: redis
+    kots.io/app-slug: grayson-sentry-enterprise-test
+    kots.io/backup: velero
   name: sentry-redis-master
 spec:
   ports:
@@ -455,8 +470,12 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
+  annotations:
+    kots.io/app-slug: grayson-sentry-enterprise-test
   labels:
     app: redis
+    kots.io/app-slug: grayson-sentry-enterprise-test
+    kots.io/backup: velero
   name: sentry-redis-slave
 spec:
   ports:
@@ -471,8 +490,12 @@ spec:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
+  annotations:
+    kots.io/app-slug: grayson-sentry-enterprise-test
   labels:
     app: sentry-cron
+    kots.io/app-slug: grayson-sentry-enterprise-test
+    kots.io/backup: velero
   name: sentry-cron
 spec:
   replicas: 2
@@ -481,8 +504,12 @@ spec:
       app: sentry-cron
   template:
     metadata:
+      annotations:
+        kots.io/app-slug: grayson-sentry-enterprise-test
       labels:
         app: sentry-cron
+        kots.io/app-slug: grayson-sentry-enterprise-test
+        kots.io/backup: velero
     spec:
       containers:
       - args:
@@ -531,7 +558,7 @@ spec:
           value: "false"
         - name: SENTRY_SERVER_EMAIL
           value: sentry@sentry.local
-        image: ttl.sh/testing/sentry:9.1.1
+        image: sentry:9.1.1
         imagePullPolicy: IfNotPresent
         name: sentry-cron
         ports:
@@ -549,8 +576,6 @@ spec:
           readOnly: true
         - mountPath: /var/lib/sentry/files
           name: sentry-data
-      imagePullSecrets:
-      - name: kotsadm-replicated-registry
       volumes:
       - configMap:
           name: sentry
@@ -561,8 +586,12 @@ spec:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
+  annotations:
+    kots.io/app-slug: grayson-sentry-enterprise-test
   labels:
     app: postgresql
+    kots.io/app-slug: grayson-sentry-enterprise-test
+    kots.io/backup: velero
   name: sentry-postgresql
 spec:
   selector:
@@ -572,8 +601,12 @@ spec:
     type: Recreate
   template:
     metadata:
+      annotations:
+        kots.io/app-slug: grayson-sentry-enterprise-test
       labels:
         app: postgresql
+        kots.io/app-slug: grayson-sentry-enterprise-test
+        kots.io/backup: velero
     spec:
       containers:
       - args: null
@@ -597,7 +630,7 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: status.podIP
-        image: ttl.sh/testing/postgres:9.6
+        image: postgres:9.6
         imagePullPolicy: ""
         livenessProbe:
           exec:
@@ -629,8 +662,6 @@ spec:
         - mountPath: /var/lib/postgresql/data/pgdata
           name: data
           subPath: postgresql-db
-      imagePullSecrets:
-      - name: kotsadm-replicated-registry
       volumes:
       - name: data
         persistentVolumeClaim:
@@ -639,19 +670,27 @@ spec:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
+  annotations:
+    kots.io/app-slug: grayson-sentry-enterprise-test
   labels:
     app: redis
+    kots.io/app-slug: grayson-sentry-enterprise-test
+    kots.io/backup: velero
   name: sentry-redis-slave
 spec:
-  replicas: 1
+  replicas: 2
   selector:
     matchLabels:
       app: redis
       role: slave
   template:
     metadata:
+      annotations:
+        kots.io/app-slug: grayson-sentry-enterprise-test
       labels:
         app: redis
+        kots.io/app-slug: grayson-sentry-enterprise-test
+        kots.io/backup: velero
         role: slave
     spec:
       containers:
@@ -676,7 +715,7 @@ spec:
               name: sentry-redis
         - name: REDIS_DISABLE_COMMANDS
           value: FLUSHDB,FLUSHALL
-        image: ttl.sh/testing/redis:4.0.11-debian-9
+        image: docker.io/bitnami/redis:4.0.11-debian-9
         imagePullPolicy: Always
         livenessProbe:
           exec:
@@ -702,8 +741,6 @@ spec:
           periodSeconds: 10
           successThreshold: 1
           timeoutSeconds: 1
-      imagePullSecrets:
-      - name: kotsadm-replicated-registry
       securityContext:
         fsGroup: 1001
         runAsUser: 1001
@@ -712,8 +749,12 @@ spec:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
+  annotations:
+    kots.io/app-slug: grayson-sentry-enterprise-test
   labels:
     app: sentry
+    kots.io/app-slug: grayson-sentry-enterprise-test
+    kots.io/backup: velero
   name: sentry-web
 spec:
   replicas: 1
@@ -722,8 +763,12 @@ spec:
       app: sentry
   template:
     metadata:
+      annotations:
+        kots.io/app-slug: grayson-sentry-enterprise-test
       labels:
         app: sentry
+        kots.io/app-slug: grayson-sentry-enterprise-test
+        kots.io/backup: velero
         role: web
     spec:
       containers:
@@ -774,7 +819,7 @@ spec:
           value: ""
         - name: GITHUB_API_SECRET
           value: ""
-        image: ttl.sh/testing/sentry:9.1.1
+        image: sentry:9.1.1
         imagePullPolicy: IfNotPresent
         livenessProbe:
           failureThreshold: 5
@@ -812,8 +857,6 @@ spec:
           readOnly: true
         - mountPath: /var/lib/sentry/files
           name: sentry-data
-      imagePullSecrets:
-      - name: kotsadm-replicated-registry
       volumes:
       - configMap:
           name: sentry
@@ -825,8 +868,12 @@ spec:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
+  annotations:
+    kots.io/app-slug: grayson-sentry-enterprise-test
   labels:
     app: sentry-worker
+    kots.io/app-slug: grayson-sentry-enterprise-test
+    kots.io/backup: velero
   name: sentry-worker
 spec:
   replicas: 2
@@ -835,8 +882,12 @@ spec:
       app: sentry-worker
   template:
     metadata:
+      annotations:
+        kots.io/app-slug: grayson-sentry-enterprise-test
       labels:
         app: sentry-worker
+        kots.io/app-slug: grayson-sentry-enterprise-test
+        kots.io/backup: velero
     spec:
       containers:
       - args:
@@ -885,7 +936,7 @@ spec:
           value: "false"
         - name: SENTRY_SERVER_EMAIL
           value: sentry@sentry.local
-        image: ttl.sh/testing/sentry:9.1.1
+        image: sentry:9.1.1
         imagePullPolicy: IfNotPresent
         name: sentry-workers
         ports:
@@ -903,8 +954,6 @@ spec:
           readOnly: true
         - mountPath: /var/lib/sentry/files
           name: sentry-data
-      imagePullSecrets:
-      - name: kotsadm-replicated-registry
       volumes:
       - configMap:
           name: sentry
@@ -915,8 +964,12 @@ spec:
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
+  annotations:
+    kots.io/app-slug: grayson-sentry-enterprise-test
   labels:
     app: redis
+    kots.io/app-slug: grayson-sentry-enterprise-test
+    kots.io/backup: velero
   name: sentry-redis-master
 spec:
   selector:
@@ -926,8 +979,12 @@ spec:
   serviceName: redis-master
   template:
     metadata:
+      annotations:
+        kots.io/app-slug: grayson-sentry-enterprise-test
       labels:
         app: redis
+        kots.io/app-slug: grayson-sentry-enterprise-test
+        kots.io/backup: velero
         role: master
     spec:
       containers:
@@ -941,7 +998,7 @@ spec:
               name: sentry-redis
         - name: REDIS_DISABLE_COMMANDS
           value: FLUSHDB,FLUSHALL
-        image: ttl.sh/testing/redis:4.0.11-debian-9
+        image: docker.io/bitnami/redis:4.0.11-debian-9
         imagePullPolicy: Always
         livenessProbe:
           exec:
@@ -971,8 +1028,6 @@ spec:
         - mountPath: /bitnami/redis/data
           name: redis-data
           subPath: null
-      imagePullSecrets:
-      - name: kotsadm-replicated-registry
       securityContext:
         fsGroup: 1001
         runAsUser: 1001
@@ -996,14 +1051,22 @@ spec:
 apiVersion: batch/v1
 kind: Job
 metadata:
+  annotations:
+    kots.io/app-slug: grayson-sentry-enterprise-test
   labels:
     app: sentry
+    kots.io/app-slug: grayson-sentry-enterprise-test
+    kots.io/backup: velero
   name: sentry-db-init
 spec:
   template:
     metadata:
+      annotations:
+        kots.io/app-slug: grayson-sentry-enterprise-test
       labels:
         app: sentry
+        kots.io/app-slug: grayson-sentry-enterprise-test
+        kots.io/backup: velero
       name: sentry-db-init
     spec:
       containers:
@@ -1054,14 +1117,12 @@ spec:
           value: "false"
         - name: SENTRY_SERVER_EMAIL
           value: sentry@sentry.local
-        image: ttl.sh/testing/sentry:9.1.1
+        image: sentry:9.1.1
         name: db-init-job
         volumeMounts:
         - mountPath: /etc/sentry
           name: config
           readOnly: true
-      imagePullSecrets:
-      - name: kotsadm-replicated-registry
       restartPolicy: Never
       volumes:
       - configMap:
@@ -1071,14 +1132,22 @@ spec:
 apiVersion: batch/v1
 kind: Job
 metadata:
+  annotations:
+    kots.io/app-slug: grayson-sentry-enterprise-test
   labels:
     app: sentry
+    kots.io/app-slug: grayson-sentry-enterprise-test
+    kots.io/backup: velero
   name: sentry-user-create
 spec:
   template:
     metadata:
+      annotations:
+        kots.io/app-slug: grayson-sentry-enterprise-test
       labels:
         app: sentry
+        kots.io/app-slug: grayson-sentry-enterprise-test
+        kots.io/backup: velero
       name: sentry-user-create
     spec:
       containers:
@@ -1136,19 +1205,17 @@ spec:
               key: user-password
               name: sentry
         - name: SENTRY_ADMIN_USERNAME
-          value: admin
+          value: ""
         - name: SENTRY_EMAIL_USE_TLS
           value: "false"
         - name: SENTRY_SERVER_EMAIL
           value: sentry@sentry.local
-        image: ttl.sh/testing/sentry:9.1.1
+        image: sentry:9.1.1
         name: user-create-job
         volumeMounts:
         - mountPath: /etc/sentry
           name: config
           readOnly: true
-      imagePullSecrets:
-      - name: kotsadm-replicated-registry
       restartPolicy: Never
       volumes:
       - configMap:
@@ -1158,6 +1225,11 @@ spec:
 apiVersion: extensions/v1beta1
 kind: Ingress
 metadata:
+  annotations:
+    kots.io/app-slug: grayson-sentry-enterprise-test
+  labels:
+    kots.io/app-slug: grayson-sentry-enterprise-test
+    kots.io/backup: velero
   name: sentry-ingress
 spec:
   rules:
@@ -1171,8 +1243,12 @@ spec:
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
+  annotations:
+    kots.io/app-slug: grayson-sentry-enterprise-test
   labels:
     app: sentry
+    kots.io/app-slug: grayson-sentry-enterprise-test
+    kots.io/backup: velero
   name: sentry
 spec:
   accessModes:
@@ -1184,12 +1260,16 @@ spec:
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
+  annotations:
+    kots.io/app-slug: grayson-sentry-enterprise-test
   labels:
     app: postgresql
+    kots.io/app-slug: grayson-sentry-enterprise-test
+    kots.io/backup: velero
   name: sentry-postgresql
 spec:
   accessModes:
   - ReadWriteOnce
   resources:
     requests:
-      storage: 8Gi
+      storage: 6Gi
