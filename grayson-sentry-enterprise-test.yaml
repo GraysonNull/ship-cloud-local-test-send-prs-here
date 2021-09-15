@@ -420,9 +420,9 @@ metadata:
 spec:
   ports:
   - name: sentry
-    port: 9001
+    port: 9024
     protocol: TCP
-    targetPort: 9001
+    targetPort: 9024
   selector:
     app: sentry
     role: web
@@ -742,8 +742,8 @@ spec:
           successThreshold: 1
           timeoutSeconds: 1
       securityContext:
-        fsGroup: 1001
-        runAsUser: 1001
+        fsGroup: 1002
+        runAsUser: 1002
       serviceAccountName: default
 ---
 apiVersion: apps/v1
@@ -1237,7 +1237,7 @@ spec:
       paths:
       - backend:
           serviceName: sentry
-          servicePort: 9000
+          servicePort: 9024
         path: /
 ---
 apiVersion: v1
