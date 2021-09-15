@@ -833,7 +833,7 @@ spec:
           timeoutSeconds: 2
         name: sentry-web
         ports:
-        - containerPort: 9000
+        - containerPort: 9008
         readinessProbe:
           failureThreshold: 10
           httpGet:
