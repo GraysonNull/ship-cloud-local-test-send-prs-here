@@ -999,9 +999,9 @@ spec:
         - name: REDIS_DISABLE_COMMANDS
           value: FLUSHDB,FLUSHALL
         - name: LICENSE_VALUE_1
-          value: "40"
+          value: "24"
         - name: LICENSE_VALUE_2
-          value: "5"
+          value: "10"
         - name: CONFIG_VALUE_2
           value: "15"
         image: docker.io/bitnami/redis:4.0.11-debian-9
