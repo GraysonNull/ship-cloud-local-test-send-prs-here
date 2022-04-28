@@ -1,0 +1,107 @@
+apiVersion: v1
+data:
+  ENV_VAR_1: fake
+  ENV_VAR_2: faker
+kind: ConfigMap
+metadata:
+  annotations:
+    kots.io/app-slug: amazing-ai
+  labels:
+    kots.io/app-slug: amazing-ai
+    kots.io/backup: velero
+  name: example-configmap
+---
+apiVersion: v1
+data:
+  .dockerconfigjson: eyJhdXRocyI6eyJwcm94eS5yZXBsaWNhdGVkLmNvbSI6eyJhdXRoIjoiTWpoU1dIQmlOalpGWWs5SlVYQmFiekoxZW1RNWFrTjJTSFJhT2pJNFVsaHdZalkyUldKUFNWRndXbTh5ZFhwa09XcERka2gwV2c9PSJ9LCJyZWdpc3RyeS5yZXBsaWNhdGVkLmNvbSI6eyJhdXRoIjoiTWpoU1dIQmlOalpGWWs5SlVYQmFiekoxZW1RNWFrTjJTSFJhT2pJNFVsaHdZalkyUldKUFNWRndXbTh5ZFhwa09XcERka2gwV2c9PSJ9fX0=
+kind: Secret
+metadata:
+  annotations:
+    helm.sh/hook: pre-install,pre-upgrade
+    helm.sh/hook-weight: "-9999"
+    kots.io/app-slug: amazing-ai
+  creationTimestamp: null
+  labels:
+    kots.io/app-slug: amazing-ai
+    kots.io/backup: velero
+  name: amazing-ai-registry
+  namespace: test
+type: kubernetes.io/dockerconfigjson
+---
+apiVersion: v1
+data:
+  .dockerconfigjson: eyJhdXRocyI6eyJwcm94eS5yZXBsaWNhdGVkLmNvbSI6eyJhdXRoIjoiTWpoU1dIQmlOalpGWWs5SlVYQmFiekoxZW1RNWFrTjJTSFJhT2pJNFVsaHdZalkyUldKUFNWRndXbTh5ZFhwa09XcERka2gwV2c9PSJ9LCJyZWdpc3RyeS5yZXBsaWNhdGVkLmNvbSI6eyJhdXRoIjoiTWpoU1dIQmlOalpGWWs5SlVYQmFiekoxZW1RNWFrTjJTSFJhT2pJNFVsaHdZalkyUldKUFNWRndXbTh5ZFhwa09XcERka2gwV2c9PSJ9fX0=
+kind: Secret
+metadata:
+  annotations:
+    helm.sh/hook: pre-install,pre-upgrade
+    helm.sh/hook-weight: "-9999"
+    kots.io/app-slug: amazing-ai
+  creationTimestamp: null
+  labels:
+    kots.io/app-slug: amazing-ai
+    kots.io/backup: velero
+  name: kotsadm-replicated-registry
+  namespace: test
+type: kubernetes.io/dockerconfigjson
+---
+apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+    kots.io/app-slug: amazing-ai
+  labels:
+    app: example
+    component: nginx
+    kots.io/app-slug: amazing-ai
+    kots.io/backup: velero
+  name: example-nginx
+spec:
+  ports:
+  - port: 80
+  selector:
+    app: example
+    component: nginx
+  type: ClusterIP
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    kots.io/app-slug: amazing-ai
+  labels:
+    app: example
+    component: nginx
+    kots.io/app-slug: amazing-ai
+    kots.io/backup: velero
+  name: example-nginx
+spec:
+  selector:
+    matchLabels:
+      app: example
+      component: nginx
+  template:
+    metadata:
+      annotations:
+        kots.io/app-slug: amazing-ai
+      labels:
+        app: example
+        component: nginx
+        kots.io/app-slug: amazing-ai
+        kots.io/backup: velero
+    spec:
+      containers:
+      - envFrom:
+        - configMapRef:
+            name: example-configmap
+        image: nginx
+        name: nginx
+        resources:
+          limits:
+            cpu: 500m
+            memory: 256Mi
+          requests:
+            cpu: 100m
+            memory: 32Mi
+      imagePullSecrets:
+      - name: amazing-ai-registry
