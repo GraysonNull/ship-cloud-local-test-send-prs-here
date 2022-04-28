@@ -99,9 +99,9 @@ spec:
         resources:
           limits:
             cpu: 500m
-            memory: 512Mi
+            memory: 256Mi
           requests:
             cpu: 100m
-            memory: 64Mi
+            memory: 32Mi
       imagePullSecrets:
       - name: amazingai-app-registry
