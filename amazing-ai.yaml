@@ -105,3 +105,25 @@ spec:
             memory: 32Mi
       imagePullSecrets:
       - name: amazing-ai-registry
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  annotations:
+    kots.io/app-slug: amazing-ai
+    kots.io/when: "true"
+  labels:
+    kots.io/app-slug: amazing-ai
+    kots.io/backup: velero
+  name: ingress
+spec:
+  rules:
+  - http:
+      paths:
+      - backend:
+          service:
+            name: example-nginx
+            port:
+              number: 80
+        path: /
+        pathType: test
